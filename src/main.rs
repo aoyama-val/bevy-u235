@@ -60,6 +60,10 @@ fn move_player(
         CELL_SIZE_PX * (X_MAX - 2) as f32,
     );
 
+    if keyboard_input.just_pressed(KeyCode::Space) {
+        println!("Space just pressed");
+    }
+
     // // Calculate the new horizontal paddle position based on player input
     // let new_paddle_position =
     //     paddle_transform.translation.x + direction * PADDLE_SPEED * time.delta_seconds();
