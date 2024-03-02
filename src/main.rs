@@ -50,10 +50,12 @@ fn move_player(
     // let mut direction = 0.0;
 
     if keyboard_input.pressed(KeyCode::ArrowLeft) {
+        // println!("{}: left pressed", time.elapsed_seconds());
         player_transform.translation.x = (player_transform.translation.x - CELL_SIZE_PX);
     }
 
     if keyboard_input.pressed(KeyCode::ArrowRight) {
+        // println!("{}: right pressed", time.elapsed_seconds());
         player_transform.translation.x = (player_transform.translation.x + CELL_SIZE_PX);
     }
     player_transform.translation.x = player_transform.translation.x.clamp(
@@ -99,9 +101,9 @@ fn main() {
                 }),
                 ..default()
             }),
-            bevy::diagnostic::LogDiagnosticsPlugin::default(),
+            // bevy::diagnostic::LogDiagnosticsPlugin::default(),
             bevy_framepace::FramepacePlugin,
-            bevy_framepace::debug::DiagnosticsPlugin,
+            // bevy_framepace::debug::DiagnosticsPlugin,
             // LogDiagnosticsPlugin::default(),
             // FrameTimeDiagnosticsPlugin,
         ))
@@ -111,16 +113,16 @@ fn main() {
         })
         .insert_resource(ClearColor(Color::rgb(0.04, 0.04, 0.04)))
         .add_systems(Startup, setup)
-        .add_systems(
-            FixedUpdate,
-            (
-                move_player,
-                // check_for_collisions,
-                // play_collision_sound,
-            )
-                .chain(),
-        )
-        .add_systems(Update, bevy::window::close_on_esc)
+        // .add_systems(
+        //     FixedUpdate,
+        //     (
+        //         move_player,
+        //         // check_for_collisions,
+        //         // play_collision_sound,
+        //     )
+        //         .chain(),
+        // )
+        .add_systems(Update, (move_player, bevy::window::close_on_esc))
         .run();
 }
 
