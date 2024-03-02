@@ -3,6 +3,7 @@ use bevy::{
     transform,
     window::{PresentMode, WindowTheme},
 };
+use bevy_framepace::Limiter;
 
 const TITLE: &str = "u235";
 const SCREEEN_WIDTH: f32 = 640.0;
@@ -98,9 +99,16 @@ fn main() {
                 }),
                 ..default()
             }),
+            bevy::diagnostic::LogDiagnosticsPlugin::default(),
+            bevy_framepace::FramepacePlugin,
+            bevy_framepace::debug::DiagnosticsPlugin,
             // LogDiagnosticsPlugin::default(),
             // FrameTimeDiagnosticsPlugin,
         ))
+        .insert_resource(bevy_framepace::FramepaceSettings {
+            limiter: Limiter::from_framerate(30.0),
+            ..Default::default()
+        })
         .insert_resource(ClearColor(Color::rgb(0.04, 0.04, 0.04)))
         .add_systems(Startup, setup)
         .add_systems(
