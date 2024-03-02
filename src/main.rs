@@ -95,21 +95,13 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     for y in 1..=Y_MAX {
         commands.spawn(SpriteBundle {
             texture: asset_server.load("image/wall.png"),
-            transform: Transform::from_xyz(
-                CELL_SIZE_PX * 1 as f32,
-                SCREEN_HEIGHT - CELL_SIZE_PX * y as f32,
-                0.0,
-            ),
+            transform: cell_to_transform(1, y),
             sprite: sprite.clone(),
             ..default()
         });
         commands.spawn(SpriteBundle {
             texture: asset_server.load("image/wall.png"),
-            transform: Transform::from_xyz(
-                CELL_SIZE_PX * (X_MAX + 1) as f32,
-                SCREEN_HEIGHT - CELL_SIZE_PX * y as f32,
-                0.0,
-            ),
+            transform: cell_to_transform(X_MAX + 1, y),
             sprite: sprite.clone(),
             ..default()
         });
@@ -117,11 +109,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     for x in 1..(X_MAX + 1) {
         commands.spawn(SpriteBundle {
             texture: asset_server.load("image/wall.png"),
-            transform: Transform::from_xyz(
-                CELL_SIZE_PX * x as f32,
-                SCREEN_HEIGHT - CELL_SIZE_PX * 1 as f32,
-                0.0,
-            ),
+            transform: cell_to_transform(x, 1),
             sprite: sprite.clone(),
             ..default()
         });
@@ -131,19 +119,25 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     for i in (X_MIN - 2)..=(X_MAX + 2) {
         commands.spawn(SpriteBundle {
             texture: asset_server.load("image/back.png"),
-            transform: Transform::from_xyz(
-                CELL_SIZE_PX * i as f32,
-                SCREEN_HEIGHT - CELL_SIZE_PX * (Y_MAX + 1) as f32,
-                0.0,
-            ),
+            transform: cell_to_transform(i, Y_MAX + 1),
             sprite: sprite.clone(),
             ..default()
         });
     }
 
-    // commands.spawn(SpriteBundle {
-    //     texture: asset_server.load("image/player.png"),
-    //     transform: Transform::from_xyz(SCREEEN_WIDTH / 2.0, SCREEN_HEIGHT / 2.0, 0.0),
-    //     ..default()
-    // });
+    // render title
+    commands.spawn(SpriteBundle {
+        texture: asset_server.load("image/title.png"),
+        transform: cell_to_transform(1, 0),
+        sprite: sprite.clone(),
+        ..default()
+    });
+}
+
+fn cell_to_transform(cx: i32, cy: i32) -> Transform {
+    Transform::from_xyz(
+        CELL_SIZE_PX * cx as f32,
+        SCREEN_HEIGHT - CELL_SIZE_PX * cy as f32,
+        0.0,
+    )
 }
