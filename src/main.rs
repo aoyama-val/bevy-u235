@@ -1,4 +1,7 @@
-use bevy::{prelude::*, window::PresentMode};
+use bevy::{
+    prelude::*,
+    window::{Cursor, PresentMode},
+};
 use bevy_framepace::Limiter;
 
 const TITLE: &str = "u235";
@@ -35,6 +38,10 @@ fn main() {
                     name: Some(TITLE.into()),
                     resolution: (SCREEEN_WIDTH, SCREEN_HEIGHT).into(),
                     present_mode: PresentMode::AutoVsync,
+                    cursor: Cursor {
+                        visible: false,
+                        ..default()
+                    },
                     ..default()
                 }),
                 ..default()
