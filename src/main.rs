@@ -35,17 +35,13 @@ struct HitSound(Handle<AudioSource>);
 #[derive(Event, Default)]
 struct ShootEvent;
 
-#[derive(Default)]
-struct Bullet {
-    entity: Option<Entity>,
-    position: Position,
-}
+#[derive(Component)]
+struct Bullet;
 
 #[derive(Resource, Default)]
 struct Game {
     score: i32,
     hi_score: i32,
-    bullets: Vec<Bullet>,
     bullet_handles: [Handle<Image>; 4],
 }
 
@@ -78,7 +74,13 @@ fn main() {
         .add_systems(Startup, setup)
         .add_systems(
             Update,
-            (move_player, bevy::window::close_on_esc, play_shoot_sound).chain(),
+            (
+                move_player,
+                move_bullets,
+                bevy::window::close_on_esc,
+                play_shoot_sound,
+            )
+                .chain(),
         )
         .run();
 }
@@ -191,40 +193,44 @@ fn move_player(
     let mut player_position = position_query.single_mut();
 
     if keyboard_input.pressed(KeyCode::ArrowLeft) {
-        // println!("{}: left pressed", time.elapsed_seconds());
-        // player_transform.translation.x = (player_transform.translation.x - CELL_SIZE_PX);
         if player_position.x > X_MIN {
             player_position.x = player_position.x - 1;
         }
     }
 
     if keyboard_input.pressed(KeyCode::ArrowRight) {
-        // println!("{}: right pressed", time.elapsed_seconds());
-        // player_transform.translation.x = (player_transform.translation.x + CELL_SIZE_PX);
         if player_position.x < X_MAX - 2 {
             player_position.x = player_position.x + 1;
         }
     }
     player_transform.translation = position_to_transform(player_position.clone()).translation;
 
-    // player_transform.translation.x = player_transform.translation.x.clamp(
-    //     CELL_SIZE_PX * X_MIN as f32,
-    //     CELL_SIZE_PX * (X_MAX - 2) as f32,
-    // );
+    if keyboard_input.pressed(KeyCode::Space) {
+        // 発射時は音を出さないのだった
+        // shoot_events.send_default();
 
-    if keyboard_input.just_pressed(KeyCode::Space) {
-        println!("Space just pressed");
-        shoot_events.send_default();
+        let bullet_position = Position::new(player_position.x + 1, player_position.y - 1);
+        spawn_bullet(commands, game, &bullet_position);
+    }
+}
 
-        let bullet_position = commands.spawn((
-            SpriteBundle {
-                texture: game.bullet_handles[2].clone(),
-                transform: position_to_transform(Position::new(3, 3)),
-                sprite: create_default_sprite(),
-                ..default()
-            },
-            // Bullet,
-        ));
+fn spawn_bullet(mut commands: Commands, mut game: ResMut<Game>, bullet_position: &Position) {
+    commands.spawn((
+        Bullet,
+        bullet_position.clone(),
+        SpriteBundle {
+            texture: game.bullet_handles[2].clone(),
+            transform: position_to_transform(bullet_position.clone()),
+            sprite: create_default_sprite(),
+            ..default()
+        },
+    ));
+}
+
+fn move_bullets(mut query: Query<(&mut Position, &mut Transform), With<Bullet>>) {
+    for (mut pos, mut transform) in &mut query {
+        pos.y -= 1;
+        *transform = position_to_transform(pos.clone());
     }
 }
 
