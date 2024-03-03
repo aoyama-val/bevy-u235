@@ -11,7 +11,7 @@ const CELL_SIZE_PX: f32 = 16.0;
 const FPS: f64 = 30.0;
 const X_MIN: i32 = 2;
 const X_MAX: i32 = 640 / 16 - 3;
-const Y_MIN: i32 = 2;
+// const Y_MIN: i32 = 2;
 const Y_MAX: i32 = 400 / 16 - 3;
 
 #[derive(Debug, Clone, PartialEq, Eq, Component)]
@@ -28,6 +28,12 @@ impl Position {
 
 #[derive(Component)]
 struct Player;
+
+#[derive(Resource)]
+struct HitSound(Handle<AudioSource>);
+
+#[derive(Event, Default)]
+struct ShootEvent;
 
 fn main() {
     App::new()
@@ -53,13 +59,18 @@ fn main() {
             ..Default::default()
         })
         .insert_resource(ClearColor(Color::rgb(0.04, 0.04, 0.04)))
+        .add_event::<ShootEvent>()
         .add_systems(Startup, setup)
-        .add_systems(Update, (move_player, bevy::window::close_on_esc))
+        .add_systems(
+            Update,
+            (move_player, bevy::window::close_on_esc, play_shoot_sound).chain(),
+        )
         .run();
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     // Camera
+    // ワールド座標は画面左上を(0, 400)、右下を(640, 0)とする
     commands.spawn(Camera2dBundle {
         transform: Transform::from_xyz(SCREEEN_WIDTH / 2.0, SCREEN_HEIGHT / 2.0, 999.0),
         projection: OrthographicProjection {
@@ -130,11 +141,12 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         ..default()
     });
 
-    // // Sound
-    // let ball_collision_sound = asset_server.load("sounds/breakout_collision.ogg");
-    // commands.insert_resource(CollisionSound(ball_collision_sound));
+    // Sound
+    let hit_sound = asset_server.load("sound/hit.wav");
+    commands.insert_resource(HitSound(hit_sound));
 }
 
+// セル座標をワールド座標に変換する
 fn position_to_transform(position: Position) -> Transform {
     Transform::from_xyz(
         CELL_SIZE_PX * position.x as f32,
@@ -147,6 +159,7 @@ fn move_player(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut query: Query<&mut Transform, With<Player>>,
     time: Res<Time>,
+    mut shoot_events: EventWriter<ShootEvent>,
 ) {
     let mut player_transform = query.single_mut();
 
@@ -166,5 +179,23 @@ fn move_player(
 
     if keyboard_input.just_pressed(KeyCode::Space) {
         println!("Space just pressed");
+        shoot_events.send_default();
+    }
+}
+
+fn play_shoot_sound(
+    mut commands: Commands,
+    mut shoot_events: EventReader<ShootEvent>,
+    sound: Res<HitSound>,
+) {
+    // Play a sound once per frame if a collision occurred.
+    if !shoot_events.is_empty() {
+        // This prevents events staying active on the next frame.
+        shoot_events.clear();
+        commands.spawn(AudioBundle {
+            source: sound.0.clone(),
+            // auto-despawn the entity when playback finishes
+            settings: PlaybackSettings::DESPAWN,
+        });
     }
 }
