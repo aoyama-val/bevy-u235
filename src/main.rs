@@ -11,8 +11,13 @@ const CELL_SIZE_PX: f32 = 16.0;
 const FPS: f64 = 30.0;
 const X_MIN: i32 = 2;
 const X_MAX: i32 = 640 / 16 - 3;
-// const Y_MIN: i32 = 2;
+const Y_MIN: i32 = 2;
 const Y_MAX: i32 = 400 / 16 - 3;
+
+const DIRECTION_LEFT: usize = 0;
+const DIRECTION_RIGHT: usize = 1;
+const DIRECTION_UP: usize = 2;
+const DIRECTION_DOWN: usize = 3;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Component)]
 struct Position {
@@ -37,6 +42,9 @@ struct ShootEvent;
 
 #[derive(Component)]
 struct Bullet;
+
+#[derive(Component)]
+struct Direction(usize);
 
 #[derive(Resource, Default)]
 struct Game {
@@ -161,10 +169,10 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut game: ResMu
         ..default()
     });
 
-    game.bullet_handles[0] = asset_server.load("image/left.png");
-    game.bullet_handles[1] = asset_server.load("image/right.png");
-    game.bullet_handles[2] = asset_server.load("image/up.png");
-    game.bullet_handles[3] = asset_server.load("image/down.png");
+    game.bullet_handles[DIRECTION_LEFT] = asset_server.load("image/left.png");
+    game.bullet_handles[DIRECTION_RIGHT] = asset_server.load("image/right.png");
+    game.bullet_handles[DIRECTION_UP] = asset_server.load("image/up.png");
+    game.bullet_handles[DIRECTION_DOWN] = asset_server.load("image/down.png");
 
     // Sound
     let hit_sound = asset_server.load("sound/hit.wav");
@@ -218,8 +226,9 @@ fn spawn_bullet(mut commands: Commands, mut game: ResMut<Game>, bullet_position:
     commands.spawn((
         Bullet,
         bullet_position.clone(),
+        Direction(DIRECTION_UP),
         SpriteBundle {
-            texture: game.bullet_handles[2].clone(),
+            texture: game.bullet_handles[DIRECTION_UP].clone(),
             transform: position_to_transform(bullet_position.clone()),
             sprite: create_default_sprite(),
             ..default()
@@ -227,9 +236,44 @@ fn spawn_bullet(mut commands: Commands, mut game: ResMut<Game>, bullet_position:
     ));
 }
 
-fn move_bullets(mut query: Query<(&mut Position, &mut Transform), With<Bullet>>) {
-    for (mut pos, mut transform) in &mut query {
-        pos.y -= 1;
+fn move_bullets(
+    mut query: Query<
+        (
+            &mut Position,
+            &mut Transform,
+            &mut Direction,
+            &mut Handle<Image>,
+            Entity,
+        ),
+        With<Bullet>,
+    >,
+    mut commands: Commands,
+    mut game: ResMut<Game>,
+) {
+    for (mut pos, mut transform, mut dir, mut handle, entity) in &mut query {
+        match dir.0 {
+            DIRECTION_LEFT => {
+                pos.x -= 1;
+            }
+            DIRECTION_RIGHT => {
+                pos.x += 1;
+            }
+            DIRECTION_UP => {
+                pos.y -= 1;
+                if pos.y <= Y_MIN {
+                    *dir = Direction(DIRECTION_DOWN);
+                    // スプライトを変える
+                    *handle = game.bullet_handles[DIRECTION_DOWN].clone();
+                }
+            }
+            DIRECTION_DOWN => {
+                pos.y += 1;
+                if pos.y > Y_MAX {
+                    commands.entity(entity).despawn();
+                }
+            }
+            _ => panic!(),
+        }
         *transform = position_to_transform(pos.clone());
     }
 }
