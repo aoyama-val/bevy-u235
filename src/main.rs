@@ -14,7 +14,7 @@ const X_MAX: i32 = 640 / 16 - 3;
 // const Y_MIN: i32 = 2;
 const Y_MAX: i32 = 400 / 16 - 3;
 
-#[derive(Debug, Clone, PartialEq, Eq, Component)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Component)]
 struct Position {
     x: i32,
     y: i32,
@@ -35,6 +35,20 @@ struct HitSound(Handle<AudioSource>);
 #[derive(Event, Default)]
 struct ShootEvent;
 
+#[derive(Default)]
+struct Bullet {
+    entity: Option<Entity>,
+    position: Position,
+}
+
+#[derive(Resource, Default)]
+struct Game {
+    score: i32,
+    hi_score: i32,
+    bullets: Vec<Bullet>,
+    bullet_handles: [Handle<Image>; 4],
+}
+
 fn main() {
     App::new()
         .add_plugins((
@@ -54,6 +68,7 @@ fn main() {
             }),
             bevy_framepace::FramepacePlugin,
         ))
+        .init_resource::<Game>()
         .insert_resource(bevy_framepace::FramepaceSettings {
             limiter: Limiter::from_framerate(FPS),
             ..Default::default()
@@ -68,7 +83,14 @@ fn main() {
         .run();
 }
 
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn create_default_sprite() -> Sprite {
+    Sprite {
+        anchor: bevy::sprite::Anchor::TopLeft,
+        ..Default::default()
+    }
+}
+
+fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut game: ResMut<Game>) {
     // Camera
     // ワールド座標は画面左上を(0, 400)、右下を(640, 0)とする
     commands.spawn(Camera2dBundle {
@@ -80,23 +102,19 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         ..default()
     });
 
-    let sprite = Sprite {
-        anchor: bevy::sprite::Anchor::TopLeft,
-        ..Default::default()
-    };
+    let sprite: Sprite = create_default_sprite();
 
     // Player
     let player_position = Position::new(18, Y_MAX);
-    let player_texture = asset_server.load("image/player.png");
     commands.spawn((
+        Player,
+        player_position.clone(),
         SpriteBundle {
-            texture: player_texture,
-            transform: position_to_transform(Position::new(18, Y_MAX)),
+            texture: asset_server.load("image/player.png"),
+            transform: position_to_transform(player_position.clone()),
             sprite: sprite.clone(),
             ..default()
         },
-        player_position,
-        Player,
     ));
 
     // Walls
@@ -141,6 +159,11 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         ..default()
     });
 
+    game.bullet_handles[0] = asset_server.load("image/left.png");
+    game.bullet_handles[1] = asset_server.load("image/right.png");
+    game.bullet_handles[2] = asset_server.load("image/up.png");
+    game.bullet_handles[3] = asset_server.load("image/down.png");
+
     // Sound
     let hit_sound = asset_server.load("sound/hit.wav");
     commands.insert_resource(HitSound(hit_sound));
@@ -158,28 +181,50 @@ fn position_to_transform(position: Position) -> Transform {
 fn move_player(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut query: Query<&mut Transform, With<Player>>,
+    mut position_query: Query<&mut Position, With<Player>>,
     time: Res<Time>,
     mut shoot_events: EventWriter<ShootEvent>,
+    mut commands: Commands,
+    mut game: ResMut<Game>,
 ) {
     let mut player_transform = query.single_mut();
+    let mut player_position = position_query.single_mut();
 
     if keyboard_input.pressed(KeyCode::ArrowLeft) {
         // println!("{}: left pressed", time.elapsed_seconds());
-        player_transform.translation.x = (player_transform.translation.x - CELL_SIZE_PX);
+        // player_transform.translation.x = (player_transform.translation.x - CELL_SIZE_PX);
+        if player_position.x > X_MIN {
+            player_position.x = player_position.x - 1;
+        }
     }
 
     if keyboard_input.pressed(KeyCode::ArrowRight) {
         // println!("{}: right pressed", time.elapsed_seconds());
-        player_transform.translation.x = (player_transform.translation.x + CELL_SIZE_PX);
+        // player_transform.translation.x = (player_transform.translation.x + CELL_SIZE_PX);
+        if player_position.x < X_MAX - 2 {
+            player_position.x = player_position.x + 1;
+        }
     }
-    player_transform.translation.x = player_transform.translation.x.clamp(
-        CELL_SIZE_PX * X_MIN as f32,
-        CELL_SIZE_PX * (X_MAX - 2) as f32,
-    );
+    player_transform.translation = position_to_transform(player_position.clone()).translation;
+
+    // player_transform.translation.x = player_transform.translation.x.clamp(
+    //     CELL_SIZE_PX * X_MIN as f32,
+    //     CELL_SIZE_PX * (X_MAX - 2) as f32,
+    // );
 
     if keyboard_input.just_pressed(KeyCode::Space) {
         println!("Space just pressed");
         shoot_events.send_default();
+
+        let bullet_position = commands.spawn((
+            SpriteBundle {
+                texture: game.bullet_handles[2].clone(),
+                transform: position_to_transform(Position::new(3, 3)),
+                sprite: create_default_sprite(),
+                ..default()
+            },
+            // Bullet,
+        ));
     }
 }
 
