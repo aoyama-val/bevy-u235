@@ -44,7 +44,7 @@ struct ShootEvent;
 struct Bullet;
 
 #[derive(Component)]
-struct NumberType(&'static str);
+struct NumberType(&'static str, usize);
 
 #[derive(Component)]
 struct Direction(usize);
@@ -55,6 +55,7 @@ struct Game {
     hi_score: i32,
     bullet_handles: [Handle<Image>; 4],
     texture_atlas_layout: Handle<TextureAtlasLayout>,
+    number_texture: Handle<Image>,
 }
 
 fn main() {
@@ -89,6 +90,7 @@ fn main() {
             (
                 move_player,
                 move_bullets,
+                update_score,
                 bevy::window::close_on_esc,
                 play_shoot_sound,
             )
@@ -182,27 +184,13 @@ fn setup(
     let layout = TextureAtlasLayout::from_grid(Vec2::new(8.0, 16.0), 10, 1, None, None);
     let texture_atlas_layout = texture_atlas_layouts.add(layout);
     game.texture_atlas_layout = texture_atlas_layout;
+    game.number_texture = texture;
 
+    // Score, HiScore
     game.score = 123;
     game.hi_score = 23456789;
-    spawn_number(
-        game.hi_score,
-        18,
-        0,
-        &mut commands,
-        &mut game,
-        texture.clone(),
-        "HiScore",
-    );
-    spawn_number(
-        game.score,
-        32,
-        0,
-        &mut commands,
-        &mut game,
-        texture.clone(),
-        "Score",
-    );
+    spawn_number(game.hi_score, 18, 0, &mut commands, &mut game, "HiScore");
+    spawn_number(game.score, 32, 0, &mut commands, &mut game, "Score");
 
     game.bullet_handles[DIRECTION_LEFT] = asset_server.load("image/left.png");
     game.bullet_handles[DIRECTION_RIGHT] = asset_server.load("image/right.png");
@@ -219,8 +207,7 @@ fn spawn_number(
     cx: i32,
     cy: i32,
     commands: &mut Commands,
-    game: &mut ResMut<Game>,
-    texture: Handle<Image>,
+    game: &ResMut<Game>,
     label: &'static str,
 ) {
     let text = format!("{:8}", num);
@@ -232,7 +219,7 @@ fn spawn_number(
             let index = (byte - 0x30) as usize;
             commands.spawn((
                 SpriteSheetBundle {
-                    texture: texture.clone(),
+                    texture: game.number_texture.clone(),
                     atlas: TextureAtlas {
                         layout: game.texture_atlas_layout.clone(),
                         index: index,
@@ -241,7 +228,7 @@ fn spawn_number(
                     visibility: Visibility::Visible,
                     ..default()
                 },
-                NumberType(label),
+                NumberType(label, i),
             ));
         }
         numbers_pos.translation.x += 8.0;
@@ -370,6 +357,28 @@ fn play_shoot_sound(
             settings: PlaybackSettings::DESPAWN,
         });
     }
+}
+
+fn update_score(
+    mut commands: Commands,
+    mut query: Query<(&NumberType, &TextureAtlas, Entity)>,
+    game: ResMut<Game>,
+) {
+    // let score_text = format!("{:8}", game.score);
+    // let hi_score_text = format!("{:8}", game.hi_score);
+    // let score_bytes = score_text.as_bytes();
+    // let hi_score_bytes = score_text.as_bytes();
+
+    for (number_type, texture_atlas, entity) in &mut query {
+        commands.entity(entity).despawn();
+        // let nt = number_type.0;
+        // if nt == "Score" {
+        //     texture_atlas.index = score_bytes[number_type.1] - 0x30;
+        // } else if nt == "HiScore" {
+        // }
+    }
+    spawn_number(game.hi_score, 18, 0, &mut commands, &game, "HiScore");
+    spawn_number(game.score, 32, 0, &mut commands, &game, "Score");
 }
 
 // func renderNumber(renderer *sdl.Renderer, resources *Resources, x int, y int, numstr string) {
