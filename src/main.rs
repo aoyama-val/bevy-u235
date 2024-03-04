@@ -96,7 +96,7 @@ struct Game {
 }
 
 #[derive(Event, Default)]
-struct ShootEvent;
+struct HitEvent;
 
 fn main() {
     App::new()
@@ -122,18 +122,18 @@ fn main() {
             ..Default::default()
         })
         .insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
-        .add_event::<ShootEvent>()
+        .add_event::<HitEvent>()
         .add_systems(Startup, setup)
         .add_systems(
             Update,
             (
-                move_player,
-                move_bullets,
+                update_player,
+                update_bullets,
                 spawn_target,
                 check_for_bullet_target_collisions,
                 update_score,
                 bevy::window::close_on_esc,
-                play_shoot_sound,
+                play_hit_sound,
             )
                 .chain(),
         )
@@ -228,8 +228,6 @@ fn setup(
     game.number_texture = texture;
 
     // Score, HiScore
-    game.score = 0;
-    game.hi_score = 0;
     spawn_number(game.hi_score, 18, 0, &mut commands, &mut game, "HiScore");
     spawn_number(game.score, 32, 0, &mut commands, &mut game, "Score");
 
@@ -258,6 +256,7 @@ fn spawn_number(
         if 0x30 <= byte && byte <= 0x39 {
             let index = (byte - 0x30) as usize;
             commands.spawn((
+                NumberType(label, i),
                 SpriteSheetBundle {
                     texture: game.number_texture.clone(),
                     atlas: TextureAtlas {
@@ -269,7 +268,6 @@ fn spawn_number(
                     sprite: create_default_sprite(),
                     ..default()
                 },
-                NumberType(label, i),
             ));
         }
         numbers_pos.translation.x += 8.0;
@@ -285,7 +283,7 @@ fn position_to_transform(position: Position) -> Transform {
     )
 }
 
-fn move_player(
+fn update_player(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut query: Query<&mut Transform, With<Player>>,
     mut position_query: Query<&mut Position, With<Player>>,
@@ -333,7 +331,7 @@ fn spawn_bullet(
     ));
 }
 
-fn move_bullets(
+fn update_bullets(
     mut query: Query<
         (
             &mut Position,
@@ -382,13 +380,13 @@ fn move_bullets(
     }
 }
 
-fn play_shoot_sound(
+fn play_hit_sound(
     mut commands: Commands,
-    mut shoot_events: EventReader<ShootEvent>,
+    mut hit_events: EventReader<HitEvent>,
     sound: Res<HitSound>,
 ) {
-    if !shoot_events.is_empty() {
-        shoot_events.clear();
+    if !hit_events.is_empty() {
+        hit_events.clear();
         commands.spawn(AudioBundle {
             source: sound.0.clone(),
             settings: PlaybackSettings::DESPAWN,
@@ -417,6 +415,7 @@ fn spawn_target(
         return;
     }
     commands.spawn((
+        Target,
         SpriteBundle {
             texture: asset_server.load("image/target.png"),
             transform: position_to_transform(position.clone()),
@@ -424,7 +423,6 @@ fn spawn_target(
             ..default()
         },
         position,
-        Target,
     ));
 }
 
@@ -442,9 +440,9 @@ fn update_score(
 
 fn check_for_bullet_target_collisions(
     mut commands: Commands,
-    bullets_query: Query<(&mut Position, Entity), (With<Bullet>, Without<Target>)>,
-    targets_query: Query<(&mut Position, Entity), (With<Target>, Without<Bullet>)>,
-    mut shoot_events: EventWriter<ShootEvent>,
+    bullets_query: Query<(&Position, Entity), (With<Bullet>, Without<Target>)>,
+    targets_query: Query<(&Position, Entity), (With<Target>, Without<Bullet>)>,
+    mut hit_events: EventWriter<HitEvent>,
     mut game: ResMut<Game>,
 ) {
     for (bullet_pos, bullet_entity) in &bullets_query {
@@ -452,7 +450,7 @@ fn check_for_bullet_target_collisions(
             if bullet_pos == target_pos {
                 commands.entity(bullet_entity).despawn();
                 commands.entity(target_entity).despawn();
-                shoot_events.send_default();
+                hit_events.send_default();
                 game.score += 1000;
                 if game.score > game.hi_score {
                     game.hi_score = game.score;
