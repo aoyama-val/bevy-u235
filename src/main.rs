@@ -453,7 +453,7 @@ fn check_for_bullet_target_collisions(
                 commands.entity(bullet_entity).despawn();
                 commands.entity(target_entity).despawn();
                 shoot_events.send_default();
-                game.score += 1;
+                game.score += 1000;
                 if game.score > game.hi_score {
                     game.hi_score = game.score;
                 }
