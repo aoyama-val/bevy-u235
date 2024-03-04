@@ -12,11 +12,6 @@ const X_MAX: i32 = 640 / 16 - 3;
 const Y_MIN: i32 = 2;
 const Y_MAX: i32 = 400 / 16 - 3;
 
-const DIRECTION_LEFT: usize = 0;
-const DIRECTION_RIGHT: usize = 1;
-const DIRECTION_UP: usize = 2;
-const DIRECTION_DOWN: usize = 3;
-
 #[derive(Debug, Default, Clone, PartialEq, Eq, Component)]
 struct Position {
     x: i32,
@@ -29,6 +24,53 @@ impl Position {
     }
 }
 
+#[derive(Debug, Clone, Component)]
+enum Direction {
+    Up,
+    Left,
+    Down,
+    Right,
+}
+
+impl Direction {
+    pub fn all() -> [Self; 4] {
+        [
+            Direction::Up,
+            Direction::Left,
+            Direction::Down,
+            Direction::Right,
+        ]
+    }
+
+    pub fn from_i32(n: i32) -> Self {
+        match n {
+            0 => Direction::Up,
+            1 => Direction::Left,
+            2 => Direction::Down,
+            3 => Direction::Right,
+            _ => panic!(),
+        }
+    }
+
+    pub fn to_i32(&self) -> i32 {
+        match self {
+            Direction::Up => 0,
+            Direction::Left => 1,
+            Direction::Down => 2,
+            Direction::Right => 3,
+        }
+    }
+
+    pub fn opposite(&self) -> Self {
+        match self {
+            Direction::Up => Direction::Down,
+            Direction::Left => Direction::Right,
+            Direction::Down => Direction::Up,
+            Direction::Right => Direction::Left,
+        }
+    }
+}
+
 #[derive(Component)]
 struct Player;
 
@@ -37,9 +79,6 @@ struct Bullet;
 
 #[derive(Component)]
 struct Target;
-
-#[derive(Component, Clone)]
-struct Direction(usize);
 
 #[derive(Component)]
 struct NumberType(&'static str, usize);
@@ -194,10 +233,10 @@ fn setup(
     spawn_number(game.hi_score, 18, 0, &mut commands, &mut game, "HiScore");
     spawn_number(game.score, 32, 0, &mut commands, &mut game, "Score");
 
-    game.bullet_handles[DIRECTION_LEFT] = asset_server.load("image/left.png");
-    game.bullet_handles[DIRECTION_RIGHT] = asset_server.load("image/right.png");
-    game.bullet_handles[DIRECTION_UP] = asset_server.load("image/up.png");
-    game.bullet_handles[DIRECTION_DOWN] = asset_server.load("image/down.png");
+    game.bullet_handles[Direction::Up.to_i32() as usize] = asset_server.load("image/up.png");
+    game.bullet_handles[Direction::Left.to_i32() as usize] = asset_server.load("image/left.png");
+    game.bullet_handles[Direction::Down.to_i32() as usize] = asset_server.load("image/down.png");
+    game.bullet_handles[Direction::Right.to_i32() as usize] = asset_server.load("image/right.png");
 
     // Sound
     let hit_sound = asset_server.load("sound/hit.wav");
@@ -271,12 +310,7 @@ fn move_player(
 
     if keyboard_input.pressed(KeyCode::ShiftLeft) || keyboard_input.pressed(KeyCode::ShiftRight) {
         let bullet_position = Position::new(player_position.x + 1, player_position.y - 1);
-        spawn_bullet(
-            &mut commands,
-            &game,
-            &bullet_position,
-            Direction(DIRECTION_UP),
-        );
+        spawn_bullet(&mut commands, &game, &bullet_position, Direction::Up);
     }
 }
 
@@ -291,7 +325,7 @@ fn spawn_bullet(
         bullet_position.clone(),
         direction.clone(),
         SpriteBundle {
-            texture: game.bullet_handles[direction.0].clone(),
+            texture: game.bullet_handles[direction.to_i32() as usize].clone(),
             transform: position_to_transform(bullet_position.clone()),
             sprite: create_default_sprite(),
             ..default()
@@ -314,34 +348,35 @@ fn move_bullets(
     game: ResMut<Game>,
 ) {
     for (mut pos, mut transform, mut dir, mut handle, entity) in &mut query {
-        match dir.0 {
-            DIRECTION_LEFT => {
+        match *dir {
+            Direction::Left => {
                 pos.x -= 1;
                 if pos.x <= X_MIN {
-                    *dir = Direction(DIRECTION_RIGHT);
+                    *dir = dir.opposite();
+                    *handle = game.bullet_handles[dir.to_i32() as usize].clone();
                 }
             }
-            DIRECTION_RIGHT => {
+            Direction::Right => {
                 pos.x += 1;
                 if pos.x >= X_MAX {
-                    *dir = Direction(DIRECTION_LEFT);
+                    *dir = dir.opposite();
+                    *handle = game.bullet_handles[dir.to_i32() as usize].clone();
                 }
             }
-            DIRECTION_UP => {
+            Direction::Up => {
                 pos.y -= 1;
                 if pos.y <= Y_MIN {
-                    *dir = Direction(DIRECTION_DOWN);
+                    *dir = dir.opposite();
                     // スプライトを変える
-                    *handle = game.bullet_handles[DIRECTION_DOWN].clone();
+                    *handle = game.bullet_handles[dir.to_i32() as usize].clone();
                 }
             }
-            DIRECTION_DOWN => {
+            Direction::Down => {
                 pos.y += 1;
                 if pos.y > Y_MAX {
                     commands.entity(entity).despawn();
                 }
             }
-            _ => panic!(),
         }
         *transform = position_to_transform(pos.clone());
     }
@@ -422,10 +457,9 @@ fn check_for_bullet_target_collisions(
                 if game.score > game.hi_score {
                     game.hi_score = game.score;
                 }
-                spawn_bullet(&mut commands, &game, bullet_pos, Direction(DIRECTION_UP));
-                spawn_bullet(&mut commands, &game, bullet_pos, Direction(DIRECTION_DOWN));
-                spawn_bullet(&mut commands, &game, bullet_pos, Direction(DIRECTION_LEFT));
-                spawn_bullet(&mut commands, &game, bullet_pos, Direction(DIRECTION_RIGHT));
+                for dir in Direction::all() {
+                    spawn_bullet(&mut commands, &game, bullet_pos, dir);
+                }
             }
         }
     }
