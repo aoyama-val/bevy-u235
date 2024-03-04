@@ -1,7 +1,4 @@
-use bevy::{
-    prelude::*,
-    window::{Cursor, PresentMode},
-};
+use bevy::{prelude::*, window::Cursor};
 use bevy_framepace::Limiter;
 use rand::Rng;
 
@@ -41,7 +38,7 @@ struct Bullet;
 #[derive(Component)]
 struct Target;
 
-#[derive(Component)]
+#[derive(Component, Clone)]
 struct Direction(usize);
 
 #[derive(Component)]
@@ -253,7 +250,7 @@ fn move_player(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut query: Query<&mut Transform, With<Player>>,
     mut position_query: Query<&mut Position, With<Player>>,
-    commands: Commands,
+    mut commands: Commands,
     game: ResMut<Game>,
 ) {
     let mut player_transform = query.single_mut();
@@ -274,17 +271,27 @@ fn move_player(
 
     if keyboard_input.pressed(KeyCode::ShiftLeft) || keyboard_input.pressed(KeyCode::ShiftRight) {
         let bullet_position = Position::new(player_position.x + 1, player_position.y - 1);
-        spawn_bullet(commands, game, &bullet_position);
+        spawn_bullet(
+            &mut commands,
+            &game,
+            &bullet_position,
+            Direction(DIRECTION_UP),
+        );
     }
 }
 
-fn spawn_bullet(mut commands: Commands, game: ResMut<Game>, bullet_position: &Position) {
+fn spawn_bullet(
+    commands: &mut Commands,
+    game: &ResMut<Game>,
+    bullet_position: &Position,
+    direction: Direction,
+) {
     commands.spawn((
         Bullet,
         bullet_position.clone(),
-        Direction(DIRECTION_UP),
+        direction.clone(),
         SpriteBundle {
-            texture: game.bullet_handles[DIRECTION_UP].clone(),
+            texture: game.bullet_handles[direction.0].clone(),
             transform: position_to_transform(bullet_position.clone()),
             sprite: create_default_sprite(),
             ..default()
@@ -409,6 +416,10 @@ fn check_for_bullet_target_collisions(
                 if game.score > game.hi_score {
                     game.hi_score = game.score;
                 }
+                spawn_bullet(&mut commands, &game, bullet_pos, Direction(DIRECTION_UP));
+                spawn_bullet(&mut commands, &game, bullet_pos, Direction(DIRECTION_DOWN));
+                spawn_bullet(&mut commands, &game, bullet_pos, Direction(DIRECTION_LEFT));
+                spawn_bullet(&mut commands, &game, bullet_pos, Direction(DIRECTION_RIGHT));
             }
         }
     }
