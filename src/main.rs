@@ -70,7 +70,6 @@ fn main() {
                     title: TITLE.into(),
                     name: Some(TITLE.into()),
                     resolution: (SCREEEN_WIDTH, SCREEN_HEIGHT).into(),
-                    present_mode: PresentMode::AutoVsync,
                     cursor: Cursor {
                         visible: false,
                         ..default()
