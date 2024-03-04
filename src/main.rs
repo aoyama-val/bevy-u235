@@ -211,8 +211,7 @@ fn spawn_number(
     label: &'static str,
 ) {
     let text = format!("{:8}", num);
-    let mut numbers_pos = position_to_transform_for_number(Position::new(cx, cy));
-    numbers_pos.translation.x += 4.0;
+    let mut numbers_pos = position_to_transform(Position::new(cx, cy));
     for i in 0..8 {
         let byte = text.as_bytes()[i];
         if 0x30 <= byte && byte <= 0x39 {
@@ -226,6 +225,7 @@ fn spawn_number(
                     },
                     transform: numbers_pos,
                     visibility: Visibility::Visible,
+                    sprite: create_default_sprite(),
                     ..default()
                 },
                 NumberType(label, i),
@@ -240,15 +240,6 @@ fn position_to_transform(position: Position) -> Transform {
     Transform::from_xyz(
         CELL_SIZE_PX * position.x as f32,
         SCREEN_HEIGHT - CELL_SIZE_PX * position.y as f32,
-        0.0,
-    )
-}
-
-// セル座標をワールド座標に変換する
-fn position_to_transform_for_number(position: Position) -> Transform {
-    Transform::from_xyz(
-        CELL_SIZE_PX * position.x as f32,
-        SCREEN_HEIGHT - CELL_SIZE_PX * (position.y as f32) - 8.0,
         0.0,
     )
 }
