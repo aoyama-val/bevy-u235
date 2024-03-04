@@ -44,6 +44,9 @@ struct ShootEvent;
 struct Bullet;
 
 #[derive(Component)]
+struct NumberType(&'static str);
+
+#[derive(Component)]
 struct Direction(usize);
 
 #[derive(Resource, Default)]
@@ -51,6 +54,7 @@ struct Game {
     score: i32,
     hi_score: i32,
     bullet_handles: [Handle<Image>; 4],
+    texture_atlas_layout: Handle<TextureAtlasLayout>,
 }
 
 fn main() {
@@ -100,7 +104,12 @@ fn create_default_sprite() -> Sprite {
     }
 }
 
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut game: ResMut<Game>) {
+fn setup(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut game: ResMut<Game>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+) {
     // Camera
     // ワールド座標は画面左上を(0, 400)、右下を(640, 0)とする
     commands.spawn(Camera2dBundle {
@@ -169,6 +178,32 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut game: ResMu
         ..default()
     });
 
+    let texture: Handle<Image> = asset_server.load("image/numbers.png");
+    let layout = TextureAtlasLayout::from_grid(Vec2::new(8.0, 16.0), 10, 1, None, None);
+    let texture_atlas_layout = texture_atlas_layouts.add(layout);
+    game.texture_atlas_layout = texture_atlas_layout;
+
+    game.score = 123;
+    game.hi_score = 23456789;
+    spawn_number(
+        game.hi_score,
+        18,
+        0,
+        &mut commands,
+        &mut game,
+        texture.clone(),
+        "HiScore",
+    );
+    spawn_number(
+        game.score,
+        32,
+        0,
+        &mut commands,
+        &mut game,
+        texture.clone(),
+        "Score",
+    );
+
     game.bullet_handles[DIRECTION_LEFT] = asset_server.load("image/left.png");
     game.bullet_handles[DIRECTION_RIGHT] = asset_server.load("image/right.png");
     game.bullet_handles[DIRECTION_UP] = asset_server.load("image/up.png");
@@ -177,6 +212,40 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut game: ResMu
     // Sound
     let hit_sound = asset_server.load("sound/hit.wav");
     commands.insert_resource(HitSound(hit_sound));
+}
+
+fn spawn_number(
+    num: i32,
+    cx: i32,
+    cy: i32,
+    commands: &mut Commands,
+    game: &mut ResMut<Game>,
+    texture: Handle<Image>,
+    label: &'static str,
+) {
+    let text = format!("{:8}", num);
+    let mut numbers_pos = position_to_transform_for_number(Position::new(cx, cy));
+    numbers_pos.translation.x += 4.0;
+    for i in 0..8 {
+        let byte = text.as_bytes()[i];
+        if 0x30 <= byte && byte <= 0x39 {
+            let index = (byte - 0x30) as usize;
+            commands.spawn((
+                SpriteSheetBundle {
+                    texture: texture.clone(),
+                    atlas: TextureAtlas {
+                        layout: game.texture_atlas_layout.clone(),
+                        index: index,
+                    },
+                    transform: numbers_pos,
+                    visibility: Visibility::Visible,
+                    ..default()
+                },
+                NumberType(label),
+            ));
+        }
+        numbers_pos.translation.x += 8.0;
+    }
 }
 
 // セル座標をワールド座標に変換する
@@ -188,11 +257,19 @@ fn position_to_transform(position: Position) -> Transform {
     )
 }
 
+// セル座標をワールド座標に変換する
+fn position_to_transform_for_number(position: Position) -> Transform {
+    Transform::from_xyz(
+        CELL_SIZE_PX * position.x as f32,
+        SCREEN_HEIGHT - CELL_SIZE_PX * (position.y as f32) - 8.0,
+        0.0,
+    )
+}
+
 fn move_player(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut query: Query<&mut Transform, With<Player>>,
     mut position_query: Query<&mut Position, With<Player>>,
-    time: Res<Time>,
     mut shoot_events: EventWriter<ShootEvent>,
     mut commands: Commands,
     mut game: ResMut<Game>,
@@ -294,3 +371,21 @@ fn play_shoot_sound(
         });
     }
 }
+
+// func renderNumber(renderer *sdl.Renderer, resources *Resources, x int, y int, numstr string) {
+// 	texture := resources.textures["numbers.bmp"]
+// 	digitWidthInPx := 8
+// 	xInPx := int32(CELL_SIZE_PX * x)
+// 	yInPx := int32(CELL_SIZE_PX * y)
+// 	for i := 0; i < len(numstr); i++ {
+// 		digit := numstr[i]
+// 		if 0x30 <= digit && digit <= 0x39 {
+// 			renderer.Copy(
+// 				texture.texture,
+// 				&sdl.Rect{X: int32(digitWidthInPx * int(digit-0x30)), Y: 0, W: int32(digitWidthInPx), H: texture.h},
+// 				&sdl.Rect{X: xInPx, Y: yInPx, W: int32(digitWidthInPx), H: texture.h},
+// 			)
+// 		}
+// 		xInPx += int32(digitWidthInPx)
+// 	}
+// }
