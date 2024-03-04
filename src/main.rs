@@ -3,6 +3,7 @@ use bevy::{
     window::{Cursor, PresentMode},
 };
 use bevy_framepace::Limiter;
+use rand::Rng;
 
 const TITLE: &str = "u235";
 const SCREEEN_WIDTH: f32 = 640.0;
@@ -90,6 +91,7 @@ fn main() {
             (
                 move_player,
                 move_bullets,
+                spawn_target,
                 update_score,
                 bevy::window::close_on_esc,
                 play_shoot_sound,
@@ -347,6 +349,32 @@ fn play_shoot_sound(
             // auto-despawn the entity when playback finishes
             settings: PlaybackSettings::DESPAWN,
         });
+    }
+}
+
+#[derive(Component)]
+struct Target;
+
+fn spawn_target(mut commands: Commands, query: Query<&Target>, asset_server: Res<AssetServer>) {
+    let mut target_count = 0;
+    for t in &query {
+        target_count += 1;
+    }
+    if rand::thread_rng().gen_range(0.0..1.0) < 0.07 && target_count < 80 {
+        let position = Position::new(
+            rand::thread_rng().gen_range(X_MIN + 1..=X_MAX - 1),
+            rand::thread_rng().gen_range(Y_MIN..=15),
+        );
+        // todo: 重なる場合は生成しない
+        commands.spawn((
+            SpriteBundle {
+                texture: asset_server.load("image/target.png"),
+                transform: position_to_transform(position.clone()),
+                sprite: create_default_sprite(),
+                ..default()
+            },
+            Target,
+        ));
     }
 }
 
