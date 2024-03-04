@@ -92,6 +92,7 @@ fn main() {
                 move_player,
                 move_bullets,
                 spawn_target,
+                check_for_bullet_target_collisions,
                 update_score,
                 bevy::window::close_on_esc,
                 play_shoot_sound,
@@ -250,9 +251,8 @@ fn move_player(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut query: Query<&mut Transform, With<Player>>,
     mut position_query: Query<&mut Position, With<Player>>,
-    mut shoot_events: EventWriter<ShootEvent>,
-    mut commands: Commands,
-    mut game: ResMut<Game>,
+    commands: Commands,
+    game: ResMut<Game>,
 ) {
     let mut player_transform = query.single_mut();
     let mut player_position = position_query.single_mut();
@@ -279,7 +279,7 @@ fn move_player(
     }
 }
 
-fn spawn_bullet(mut commands: Commands, mut game: ResMut<Game>, bullet_position: &Position) {
+fn spawn_bullet(mut commands: Commands, game: ResMut<Game>, bullet_position: &Position) {
     commands.spawn((
         Bullet,
         bullet_position.clone(),
@@ -305,7 +305,7 @@ fn move_bullets(
         With<Bullet>,
     >,
     mut commands: Commands,
-    mut game: ResMut<Game>,
+    game: ResMut<Game>,
 ) {
     for (mut pos, mut transform, mut dir, mut handle, entity) in &mut query {
         match dir.0 {
@@ -369,7 +369,6 @@ fn spawn_target(
         target_count += 1;
         if *pos == position {
             // 既存のターゲットと重なる場合は生成しない
-            println!("exist");
             return;
         }
     }
@@ -408,6 +407,23 @@ fn update_score(
     }
     spawn_number(game.hi_score, 18, 0, &mut commands, &game, "HiScore");
     spawn_number(game.score, 32, 0, &mut commands, &game, "Score");
+}
+
+fn check_for_bullet_target_collisions(
+    mut commands: Commands,
+    bullets_query: Query<(&mut Position, Entity), (With<Bullet>, Without<Target>)>,
+    targets_query: Query<(&mut Position, Entity), (With<Target>, Without<Bullet>)>,
+    mut shoot_events: EventWriter<ShootEvent>,
+) {
+    for (bullet_pos, bullet_entity) in &bullets_query {
+        for (target_pos, target_entity) in &targets_query {
+            if bullet_pos == target_pos {
+                commands.entity(bullet_entity).despawn();
+                commands.entity(target_entity).despawn();
+                shoot_events.send_default();
+            }
+        }
+    }
 }
 
 // func renderNumber(renderer *sdl.Renderer, resources *Resources, x int, y int, numstr string) {
