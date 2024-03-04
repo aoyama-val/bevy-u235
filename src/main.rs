@@ -12,7 +12,7 @@ const X_MAX: i32 = 640 / 16 - 3;
 const Y_MIN: i32 = 2;
 const Y_MAX: i32 = 400 / 16 - 3;
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Component)]
+#[derive(Debug, Default, Clone, Eq, PartialEq, Component)]
 struct Position {
     x: i32,
     y: i32,
@@ -22,9 +22,16 @@ impl Position {
     fn new(x: i32, y: i32) -> Self {
         Self { x, y }
     }
+
+    pub fn add(&self, x: i32, y: i32) -> Self {
+        Self {
+            x: self.x + x,
+            y: self.y + y,
+        }
+    }
 }
 
-#[derive(Debug, Clone, Component)]
+#[derive(Debug, Clone, Eq, PartialEq, Component)]
 enum Direction {
     Up,
     Left,
@@ -67,6 +74,15 @@ impl Direction {
             Direction::Left => Direction::Right,
             Direction::Down => Direction::Up,
             Direction::Right => Direction::Left,
+        }
+    }
+
+    pub fn neighbor(&self, pos: Position) -> Position {
+        match self {
+            Direction::Up => pos.add(0, -1),
+            Direction::Left => pos.add(-1, 0),
+            Direction::Down => pos.add(0, 1),
+            Direction::Right => pos.add(1, 0),
         }
     }
 }
@@ -131,6 +147,7 @@ fn main() {
                 update_bullets,
                 spawn_target,
                 check_for_bullet_target_collisions,
+                check_for_bullet_bullet_collisions,
                 update_score,
                 bevy::window::close_on_esc,
                 play_hit_sound,
@@ -456,8 +473,27 @@ fn check_for_bullet_target_collisions(
                     game.hi_score = game.score;
                 }
                 for dir in Direction::all() {
-                    spawn_bullet(&mut commands, &game, bullet_pos, dir);
+                    spawn_bullet(&mut commands, &game, &dir.neighbor(bullet_pos.clone()), dir);
                 }
+            }
+        }
+    }
+}
+
+fn check_for_bullet_bullet_collisions(
+    mut commands: Commands,
+    bullets_query0: Query<(&Position, &Direction, Entity), (With<Bullet>, Without<Target>)>,
+    bullets_query1: Query<(&Position, &Direction, Entity), (With<Bullet>, Without<Target>)>,
+) {
+    for (bullet_pos0, dir0, bullet_entity0) in &bullets_query0 {
+        for (bullet_pos1, dir1, bullet_entity1) in &bullets_query1 {
+            if bullet_pos0 == bullet_pos1
+                && bullet_entity0 != bullet_entity1
+                && ((*dir0 == Direction::Left && *dir1 == Direction::Right)
+                    || (*dir0 == Direction::Right && *dir1 == Direction::Left))
+            {
+                commands.entity(bullet_entity0).despawn();
+                commands.entity(bullet_entity1).despawn();
             }
         }
     }
