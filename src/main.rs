@@ -35,20 +35,20 @@ impl Position {
 #[derive(Component)]
 struct Player;
 
-#[derive(Resource)]
-struct HitSound(Handle<AudioSource>);
-
-#[derive(Event, Default)]
-struct ShootEvent;
-
 #[derive(Component)]
 struct Bullet;
 
 #[derive(Component)]
-struct NumberType(&'static str, usize);
+struct Target;
 
 #[derive(Component)]
 struct Direction(usize);
+
+#[derive(Component)]
+struct NumberType(&'static str, usize);
+
+#[derive(Resource)]
+struct HitSound(Handle<AudioSource>);
 
 #[derive(Resource, Default)]
 struct Game {
@@ -58,6 +58,9 @@ struct Game {
     texture_atlas_layout: Handle<TextureAtlasLayout>,
     number_texture: Handle<Image>,
 }
+
+#[derive(Event, Default)]
+struct ShootEvent;
 
 fn main() {
     App::new()
@@ -190,8 +193,8 @@ fn setup(
     game.number_texture = texture;
 
     // Score, HiScore
-    game.score = 123;
-    game.hi_score = 23456789;
+    game.score = 0;
+    game.hi_score = 0;
     spawn_number(game.hi_score, 18, 0, &mut commands, &mut game, "HiScore");
     spawn_number(game.score, 32, 0, &mut commands, &mut game, "Score");
 
@@ -271,9 +274,6 @@ fn move_player(
     player_transform.translation = position_to_transform(player_position.clone()).translation;
 
     if keyboard_input.pressed(KeyCode::ShiftLeft) || keyboard_input.pressed(KeyCode::ShiftRight) {
-        // 発射時は音を出さないのだった
-        // shoot_events.send_default();
-
         let bullet_position = Position::new(player_position.x + 1, player_position.y - 1);
         spawn_bullet(commands, game, &bullet_position);
     }
@@ -340,20 +340,14 @@ fn play_shoot_sound(
     mut shoot_events: EventReader<ShootEvent>,
     sound: Res<HitSound>,
 ) {
-    // Play a sound once per frame if a collision occurred.
     if !shoot_events.is_empty() {
-        // This prevents events staying active on the next frame.
         shoot_events.clear();
         commands.spawn(AudioBundle {
             source: sound.0.clone(),
-            // auto-despawn the entity when playback finishes
             settings: PlaybackSettings::DESPAWN,
         });
     }
 }
-
-#[derive(Component)]
-struct Target;
 
 fn spawn_target(
     mut commands: Commands,
@@ -389,21 +383,11 @@ fn spawn_target(
 
 fn update_score(
     mut commands: Commands,
-    mut query: Query<(&NumberType, &TextureAtlas, Entity)>,
+    mut query: Query<Entity, With<NumberType>>,
     game: ResMut<Game>,
 ) {
-    // let score_text = format!("{:8}", game.score);
-    // let hi_score_text = format!("{:8}", game.hi_score);
-    // let score_bytes = score_text.as_bytes();
-    // let hi_score_bytes = score_text.as_bytes();
-
-    for (number_type, texture_atlas, entity) in &mut query {
+    for entity in &mut query {
         commands.entity(entity).despawn();
-        // let nt = number_type.0;
-        // if nt == "Score" {
-        //     texture_atlas.index = score_bytes[number_type.1] - 0x30;
-        // } else if nt == "HiScore" {
-        // }
     }
     spawn_number(game.hi_score, 18, 0, &mut commands, &game, "HiScore");
     spawn_number(game.score, 32, 0, &mut commands, &game, "Score");
@@ -414,6 +398,7 @@ fn check_for_bullet_target_collisions(
     bullets_query: Query<(&mut Position, Entity), (With<Bullet>, Without<Target>)>,
     targets_query: Query<(&mut Position, Entity), (With<Target>, Without<Bullet>)>,
     mut shoot_events: EventWriter<ShootEvent>,
+    mut game: ResMut<Game>,
 ) {
     for (bullet_pos, bullet_entity) in &bullets_query {
         for (target_pos, target_entity) in &targets_query {
@@ -421,25 +406,11 @@ fn check_for_bullet_target_collisions(
                 commands.entity(bullet_entity).despawn();
                 commands.entity(target_entity).despawn();
                 shoot_events.send_default();
+                game.score += 1;
+                if game.score > game.hi_score {
+                    game.hi_score = game.score;
+                }
             }
         }
     }
 }
-
-// func renderNumber(renderer *sdl.Renderer, resources *Resources, x int, y int, numstr string) {
-// 	texture := resources.textures["numbers.bmp"]
-// 	digitWidthInPx := 8
-// 	xInPx := int32(CELL_SIZE_PX * x)
-// 	yInPx := int32(CELL_SIZE_PX * y)
-// 	for i := 0; i < len(numstr); i++ {
-// 		digit := numstr[i]
-// 		if 0x30 <= digit && digit <= 0x39 {
-// 			renderer.Copy(
-// 				texture.texture,
-// 				&sdl.Rect{X: int32(digitWidthInPx * int(digit-0x30)), Y: 0, W: int32(digitWidthInPx), H: texture.h},
-// 				&sdl.Rect{X: xInPx, Y: yInPx, W: int32(digitWidthInPx), H: texture.h},
-// 			)
-// 		}
-// 		xInPx += int32(digitWidthInPx)
-// 	}
-// }
