@@ -270,7 +270,7 @@ fn move_player(
     }
     player_transform.translation = position_to_transform(player_position.clone()).translation;
 
-    if keyboard_input.pressed(KeyCode::Space) {
+    if keyboard_input.pressed(KeyCode::ShiftLeft) || keyboard_input.pressed(KeyCode::ShiftRight) {
         // 発射時は音を出さないのだった
         // shoot_events.send_default();
 
@@ -355,27 +355,37 @@ fn play_shoot_sound(
 #[derive(Component)]
 struct Target;
 
-fn spawn_target(mut commands: Commands, query: Query<&Target>, asset_server: Res<AssetServer>) {
+fn spawn_target(
+    mut commands: Commands,
+    query: Query<(&Target, &Position)>,
+    asset_server: Res<AssetServer>,
+) {
+    let position = Position::new(
+        rand::thread_rng().gen_range(X_MIN + 1..=X_MAX - 1),
+        rand::thread_rng().gen_range(Y_MIN..=15),
+    );
     let mut target_count = 0;
-    for t in &query {
+    for (_, pos) in &query {
         target_count += 1;
+        if *pos == position {
+            // 既存のターゲットと重なる場合は生成しない
+            println!("exist");
+            return;
+        }
     }
-    if rand::thread_rng().gen_range(0.0..1.0) < 0.07 && target_count < 80 {
-        let position = Position::new(
-            rand::thread_rng().gen_range(X_MIN + 1..=X_MAX - 1),
-            rand::thread_rng().gen_range(Y_MIN..=15),
-        );
-        // todo: 重なる場合は生成しない
-        commands.spawn((
-            SpriteBundle {
-                texture: asset_server.load("image/target.png"),
-                transform: position_to_transform(position.clone()),
-                sprite: create_default_sprite(),
-                ..default()
-            },
-            Target,
-        ));
+    if !(rand::thread_rng().gen_range(0.0..1.0) < 0.07 && target_count < 80) {
+        return;
     }
+    commands.spawn((
+        SpriteBundle {
+            texture: asset_server.load("image/target.png"),
+            transform: position_to_transform(position.clone()),
+            sprite: create_default_sprite(),
+            ..default()
+        },
+        position,
+        Target,
+    ));
 }
 
 fn update_score(
