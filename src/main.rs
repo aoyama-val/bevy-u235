@@ -317,9 +317,15 @@ fn move_bullets(
         match dir.0 {
             DIRECTION_LEFT => {
                 pos.x -= 1;
+                if pos.x <= X_MIN {
+                    *dir = Direction(DIRECTION_RIGHT);
+                }
             }
             DIRECTION_RIGHT => {
                 pos.x += 1;
+                if pos.x >= X_MAX {
+                    *dir = Direction(DIRECTION_LEFT);
+                }
             }
             DIRECTION_UP => {
                 pos.y -= 1;
