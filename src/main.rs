@@ -109,6 +109,7 @@ struct Game {
     bullet_handles: [Handle<Image>; 4],
     texture_atlas_layout: Handle<TextureAtlasLayout>,
     number_texture: Handle<Image>,
+    dust_texture: Handle<Image>,
 }
 
 #[derive(Event, Default)]
@@ -252,6 +253,7 @@ fn setup(
     game.bullet_handles[Direction::Left.to_i32() as usize] = asset_server.load("image/left.png");
     game.bullet_handles[Direction::Down.to_i32() as usize] = asset_server.load("image/down.png");
     game.bullet_handles[Direction::Right.to_i32() as usize] = asset_server.load("image/right.png");
+    game.dust_texture = asset_server.load("image/dust.png");
 
     // Sound
     let hit_sound = asset_server.load("sound/hit.wav");
@@ -325,7 +327,7 @@ fn update_player(
 
     if keyboard_input.pressed(KeyCode::ShiftLeft) || keyboard_input.pressed(KeyCode::ShiftRight) {
         let bullet_position = Position::new(player_position.x + 1, player_position.y - 1);
-        spawn_bullet(&mut commands, &game, &bullet_position, Direction::Up);
+        spawn_bullet(&mut commands, &game, &bullet_position, Direction::Up, false);
     }
 }
 
@@ -334,13 +336,18 @@ fn spawn_bullet(
     game: &ResMut<Game>,
     bullet_position: &Position,
     direction: Direction,
+    is_dust: bool,
 ) {
     commands.spawn((
         Bullet,
         bullet_position.clone(),
         direction.clone(),
         SpriteBundle {
-            texture: game.bullet_handles[direction.to_i32() as usize].clone(),
+            texture: if is_dust {
+                game.dust_texture.clone()
+            } else {
+                game.bullet_handles[direction.to_i32() as usize].clone()
+            },
             transform: position_to_transform(bullet_position.clone()),
             sprite: create_default_sprite(),
             ..default()
@@ -473,7 +480,13 @@ fn check_for_bullet_target_collisions(
                     game.hi_score = game.score;
                 }
                 for dir in Direction::all() {
-                    spawn_bullet(&mut commands, &game, &dir.neighbor(bullet_pos.clone()), dir);
+                    spawn_bullet(
+                        &mut commands,
+                        &game,
+                        &dir.neighbor(bullet_pos.clone()),
+                        dir.clone(),
+                        dir == Direction::Down,
+                    );
                 }
             }
         }
