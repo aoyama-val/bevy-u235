@@ -77,7 +77,7 @@ fn main() {
             limiter: Limiter::from_framerate(FPS),
             ..Default::default()
         })
-        .insert_resource(ClearColor(Color::rgb(0.04, 0.04, 0.04)))
+        .insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
         .add_event::<ShootEvent>()
         .add_systems(Startup, setup)
         .add_systems(
