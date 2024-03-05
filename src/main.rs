@@ -157,7 +157,7 @@ fn main() {
         .init_resource::<Game>()
         .insert_resource(bevy_framepace::FramepaceSettings {
             limiter: Limiter::from_framerate(FPS),
-            ..Default::default()
+            ..default()
         })
         .insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
         .add_event::<HitEvent>()
@@ -191,10 +191,10 @@ fn main() {
         .run();
 }
 
-fn create_default_sprite() -> Sprite {
+fn create_top_left_sprite() -> Sprite {
     Sprite {
         anchor: bevy::sprite::Anchor::TopLeft,
-        ..Default::default()
+        ..default()
     }
 }
 
@@ -237,7 +237,7 @@ fn setup_ingame(
         },
     ));
 
-    let sprite: Sprite = create_default_sprite();
+    let sprite: Sprite = create_top_left_sprite();
 
     // Player
     let player_position = Position::new(18, Y_MAX);
@@ -350,7 +350,7 @@ fn spawn_number(
                     },
                     transform: numbers_pos,
                     visibility: Visibility::Visible,
-                    sprite: create_default_sprite(),
+                    sprite: create_top_left_sprite(),
                     ..default()
                 },
             ));
@@ -424,7 +424,7 @@ fn spawn_bullet(
                 game.bullet_handles[direction.to_i32() as usize].clone()
             },
             transform: position_to_transform(bullet_position.clone()),
-            sprite: create_default_sprite(),
+            sprite: create_top_left_sprite(),
             ..default()
         },
     ));
@@ -512,7 +512,7 @@ fn crash_event(
                     DespawnOnRestart,
                     SpriteBundle {
                         texture: game.dust_texture.clone(),
-                        sprite: create_default_sprite(),
+                        sprite: create_top_left_sprite(),
                         transform: position_to_transform(Position::new(position.x + i, position.y)),
                         ..default()
                     },
@@ -564,7 +564,7 @@ fn spawn_target(
         SpriteBundle {
             texture: asset_server.load("image/target.png"),
             transform: position_to_transform(position.clone()),
-            sprite: create_default_sprite(),
+            sprite: create_top_left_sprite(),
             ..default()
         },
         position,
