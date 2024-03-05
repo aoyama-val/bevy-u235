@@ -160,6 +160,7 @@ fn main() {
         .insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
         .add_event::<HitEvent>()
         .add_event::<CrashEvent>()
+        .add_systems(Startup, setup)
         .add_systems(OnEnter(GameState::InGame), setup_ingame)
         .add_systems(OnExit(GameState::InGame), cleanup_ingame)
         .add_systems(
@@ -181,7 +182,9 @@ fn main() {
         )
         .add_systems(
             Update,
-            (restart,).chain().run_if(in_state(GameState::GameOver)),
+            (restart, bevy::window::close_on_esc)
+                .chain()
+                .run_if(in_state(GameState::GameOver)),
         )
         .run();
 }
@@ -191,6 +194,18 @@ fn create_default_sprite() -> Sprite {
         anchor: bevy::sprite::Anchor::TopLeft,
         ..Default::default()
     }
+}
+
+fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut game: ResMut<Game>) {
+    game.bullet_handles[Direction::Up.to_i32() as usize] = asset_server.load("image/up.png");
+    game.bullet_handles[Direction::Left.to_i32() as usize] = asset_server.load("image/left.png");
+    game.bullet_handles[Direction::Down.to_i32() as usize] = asset_server.load("image/down.png");
+    game.bullet_handles[Direction::Right.to_i32() as usize] = asset_server.load("image/right.png");
+    game.dust_texture = asset_server.load("image/dust.png");
+
+    // Sound
+    commands.insert_resource(HitSound(asset_server.load("sound/hit.wav")));
+    commands.insert_resource(CrashSound(asset_server.load("sound/crash.wav")));
 }
 
 fn setup_ingame(
@@ -302,16 +317,6 @@ fn setup_ingame(
     // Score, HiScore
     spawn_number(game.hi_score, 18, 0, &mut commands, &mut game, "HiScore");
     spawn_number(game.score, 32, 0, &mut commands, &mut game, "Score");
-
-    game.bullet_handles[Direction::Up.to_i32() as usize] = asset_server.load("image/up.png");
-    game.bullet_handles[Direction::Left.to_i32() as usize] = asset_server.load("image/left.png");
-    game.bullet_handles[Direction::Down.to_i32() as usize] = asset_server.load("image/down.png");
-    game.bullet_handles[Direction::Right.to_i32() as usize] = asset_server.load("image/right.png");
-    game.dust_texture = asset_server.load("image/dust.png");
-
-    // Sound
-    commands.insert_resource(HitSound(asset_server.load("sound/hit.wav")));
-    commands.insert_resource(CrashSound(asset_server.load("sound/crash.wav")));
 }
 
 fn cleanup_ingame(mut commands: Commands) {
