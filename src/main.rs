@@ -1,4 +1,4 @@
-use bevy::{prelude::*, window::Cursor};
+use bevy::prelude::*;
 use bevy_framepace::Limiter;
 use rand::Rng;
 
@@ -143,7 +143,7 @@ fn main() {
                     title: TITLE.into(),
                     name: Some(TITLE.into()),
                     resolution: (SCREEEN_WIDTH, SCREEN_HEIGHT).into(),
-                    cursor: Cursor {
+                    cursor: bevy::window::Cursor {
                         visible: false,
                         ..default()
                     },
