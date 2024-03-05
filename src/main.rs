@@ -234,6 +234,7 @@ fn spawn_number(
 ) {
     let text = format!("{:8}", num);
     let mut numbers_pos = position_to_transform(Position::new(cx, cy));
+    numbers_pos.translation.z = 2.0; // titleより手前
     for i in 0..8 {
         let byte = text.as_bytes()[i];
         let mut spawn_num = |atlas_index, visibility| {
