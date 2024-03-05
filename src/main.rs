@@ -142,10 +142,14 @@ struct CrashSound(Handle<AudioSource>);
 struct Game {
     score: i32,
     hi_score: i32,
-    bullet_handles: [Handle<Image>; 4],
-    texture_atlas_layout: Handle<TextureAtlasLayout>,
-    number_texture: Handle<Image>,
-    dust_texture: Handle<Image>,
+}
+
+#[derive(Resource, Default)]
+struct Textures {
+    bullets: [Handle<Image>; 4],
+    numbers: Handle<Image>,
+    numbers_layout: Handle<TextureAtlasLayout>,
+    dust: Handle<Image>,
 }
 
 #[derive(Event, Default)]
@@ -176,6 +180,7 @@ fn main() {
         ))
         .insert_state(GameState::InGame)
         .init_resource::<Game>()
+        .init_resource::<Textures>()
         .insert_resource(bevy_framepace::FramepaceSettings {
             limiter: Limiter::from_framerate(FPS),
             ..default()
@@ -219,13 +224,12 @@ fn create_top_left_sprite() -> Sprite {
     }
 }
 
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut game: ResMut<Game>) {
-    game.bullet_handles[Direction::Up.to_i32() as usize] = asset_server.load(assets::IMAGE_UP);
-    game.bullet_handles[Direction::Left.to_i32() as usize] = asset_server.load(assets::IMAGE_LEFT);
-    game.bullet_handles[Direction::Down.to_i32() as usize] = asset_server.load(assets::IMAGE_DOWN);
-    game.bullet_handles[Direction::Right.to_i32() as usize] =
-        asset_server.load(assets::IMAGE_RIGHT);
-    game.dust_texture = asset_server.load(assets::IMAGE_DUST);
+fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut textures: ResMut<Textures>) {
+    textures.bullets[Direction::Up.to_i32() as usize] = asset_server.load(assets::IMAGE_UP);
+    textures.bullets[Direction::Left.to_i32() as usize] = asset_server.load(assets::IMAGE_LEFT);
+    textures.bullets[Direction::Down.to_i32() as usize] = asset_server.load(assets::IMAGE_DOWN);
+    textures.bullets[Direction::Right.to_i32() as usize] = asset_server.load(assets::IMAGE_RIGHT);
+    textures.dust = asset_server.load(assets::IMAGE_DUST);
 
     // Sound
     commands.insert_resource(HitSound(asset_server.load(assets::SOUND_HIT)));
@@ -236,10 +240,13 @@ fn setup_ingame(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut game: ResMut<Game>,
+    mut textures: ResMut<Textures>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     query: Query<(&DespawnOnRestart, Entity)>,
 ) {
     println!("setup_ingame");
+
+    game.score = 0;
 
     for (_, entity) in &query {
         commands.entity(entity).despawn();
@@ -327,13 +334,13 @@ fn setup_ingame(
         None,
         None,
     );
-    let texture_atlas_layout = texture_atlas_layouts.add(layout);
-    game.texture_atlas_layout = texture_atlas_layout;
-    game.number_texture = texture;
+    textures.numbers_layout = texture_atlas_layouts.add(layout);
+    textures.numbers = texture;
 
     // Score, HiScore
-    spawn_number(game.hi_score, 18, 0, &mut commands, &mut game, "HiScore");
-    spawn_number(game.score, 32, 0, &mut commands, &mut game, "Score");
+    let textures: &Res<'_, Textures> = &textures.into();
+    spawn_number(game.hi_score, 18, 0, &mut commands, textures, "HiScore");
+    spawn_number(game.score, 32, 0, &mut commands, textures, "Score");
 }
 
 fn cleanup_ingame(mut commands: Commands) {
@@ -345,7 +352,7 @@ fn spawn_number(
     cx: i32,
     cy: i32,
     commands: &mut Commands,
-    game: &ResMut<Game>,
+    textures: &Res<Textures>,
     label: &'static str,
 ) {
     let text = format!("{:8}", num);
@@ -358,9 +365,9 @@ fn spawn_number(
                 NumberType(label, i),
                 DespawnOnRestart,
                 SpriteSheetBundle {
-                    texture: game.number_texture.clone(),
+                    texture: textures.numbers.clone(),
                     atlas: TextureAtlas {
-                        layout: game.texture_atlas_layout.clone(),
+                        layout: textures.numbers_layout.clone(),
                         index: index,
                     },
                     transform: numbers_pos,
@@ -387,7 +394,7 @@ fn update_player(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut query: Query<(&mut Transform, &mut Position), With<Player>>,
     mut commands: Commands,
-    game: ResMut<Game>,
+    textures: Res<Textures>,
 ) {
     for (mut transform, mut position) in &mut query {
         if keyboard_input.pressed(KeyCode::ArrowLeft) {
@@ -406,7 +413,13 @@ fn update_player(
         if keyboard_input.pressed(KeyCode::ShiftLeft) || keyboard_input.pressed(KeyCode::ShiftRight)
         {
             let bullet_position = Position::new(position.x + 1, position.y - 1);
-            spawn_bullet(&mut commands, &game, &bullet_position, Direction::Up, false);
+            spawn_bullet(
+                &mut commands,
+                &textures,
+                &bullet_position,
+                Direction::Up,
+                false,
+            );
         }
     }
 }
@@ -422,7 +435,7 @@ fn restart(
 
 fn spawn_bullet(
     commands: &mut Commands,
-    game: &ResMut<Game>,
+    textures: &Res<Textures>,
     bullet_position: &Position,
     direction: Direction,
     is_dust: bool,
@@ -434,9 +447,9 @@ fn spawn_bullet(
         direction.clone(),
         SpriteBundle {
             texture: if is_dust {
-                game.dust_texture.clone()
+                textures.dust.clone()
             } else {
-                game.bullet_handles[direction.to_i32() as usize].clone()
+                textures.bullets[direction.to_i32() as usize].clone()
             },
             transform: position_to_transform(bullet_position.clone()),
             sprite: create_top_left_sprite(),
@@ -457,7 +470,7 @@ fn update_bullets(
         With<Bullet>,
     >,
     mut commands: Commands,
-    game: ResMut<Game>,
+    textures: Res<Textures>,
 ) {
     for (mut pos, mut transform, mut dir, mut handle, entity) in &mut query {
         match *dir {
@@ -465,14 +478,14 @@ fn update_bullets(
                 pos.x -= 1;
                 if pos.x <= X_MIN {
                     *dir = dir.opposite();
-                    *handle = game.bullet_handles[dir.to_i32() as usize].clone();
+                    *handle = textures.bullets[dir.to_i32() as usize].clone();
                 }
             }
             Direction::Right => {
                 pos.x += 1;
                 if pos.x >= X_MAX {
                     *dir = dir.opposite();
-                    *handle = game.bullet_handles[dir.to_i32() as usize].clone();
+                    *handle = textures.bullets[dir.to_i32() as usize].clone();
                 }
             }
             Direction::Up => {
@@ -480,7 +493,7 @@ fn update_bullets(
                 if pos.y <= Y_MIN {
                     *dir = dir.opposite();
                     // スプライトを変える
-                    *handle = game.bullet_handles[dir.to_i32() as usize].clone();
+                    *handle = textures.bullets[dir.to_i32() as usize].clone();
                 }
             }
             Direction::Down => {
@@ -514,6 +527,7 @@ fn crash_event(
     mut crash_events: EventReader<CrashEvent>,
     sound: Res<CrashSound>,
     game: Res<Game>,
+    textures: Res<Textures>,
 ) {
     if !crash_events.is_empty() {
         for event in crash_events.read() {
@@ -526,7 +540,7 @@ fn crash_event(
                 commands.spawn((
                     DespawnOnRestart,
                     SpriteBundle {
-                        texture: game.dust_texture.clone(),
+                        texture: textures.dust.clone(),
                         sprite: create_top_left_sprite(),
                         transform: position_to_transform(Position::new(position.x + i, position.y)),
                         ..default()
@@ -589,13 +603,14 @@ fn spawn_target(
 fn update_score(
     mut commands: Commands,
     mut query: Query<Entity, With<NumberType>>,
+    textures: Res<Textures>,
     game: ResMut<Game>,
 ) {
     for entity in &mut query {
         commands.entity(entity).despawn();
     }
-    spawn_number(game.hi_score, 18, 0, &mut commands, &game, "HiScore");
-    spawn_number(game.score, 32, 0, &mut commands, &game, "Score");
+    spawn_number(game.hi_score, 18, 0, &mut commands, &textures, "HiScore");
+    spawn_number(game.score, 32, 0, &mut commands, &textures, "Score");
 }
 
 fn check_for_bullet_target_collisions(
@@ -604,6 +619,7 @@ fn check_for_bullet_target_collisions(
     targets_query: Query<(&Position, Entity), (With<Target>, Without<Bullet>)>,
     mut hit_events: EventWriter<HitEvent>,
     mut game: ResMut<Game>,
+    textures: Res<Textures>,
 ) {
     for (bullet_pos, bullet_entity) in &bullets_query {
         for (target_pos, target_entity) in &targets_query {
@@ -618,7 +634,7 @@ fn check_for_bullet_target_collisions(
                 for dir in Direction::all() {
                     spawn_bullet(
                         &mut commands,
-                        &game,
+                        &textures,
                         &dir.neighbor(bullet_pos.clone()),
                         dir.clone(),
                         dir == Direction::Down,
