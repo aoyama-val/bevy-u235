@@ -74,7 +74,7 @@ fn main() {
         )
         .add_systems(
             Update,
-            (restart, bevy::window::close_on_esc)
+            (restart_system, bevy::window::close_on_esc)
                 .chain()
                 .run_if(in_state(GameState::GameOver)),
         )
@@ -111,7 +111,7 @@ fn setup_ingame(
 ) {
     println!("setup_ingame");
 
-    game.score = 0;
+    game.reset();
 
     for (_, entity) in &query {
         commands.entity(entity).despawn();
@@ -291,7 +291,7 @@ fn player_system(
     }
 }
 
-fn restart(
+fn restart_system(
     mut next_state: ResMut<NextState<GameState>>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
 ) {

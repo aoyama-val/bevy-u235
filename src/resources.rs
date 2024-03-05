@@ -12,6 +12,12 @@ pub struct Game {
     pub hi_score: i32,
 }
 
+impl Game {
+    pub fn reset(&mut self) {
+        self.score = 0;
+    }
+}
+
 #[derive(Resource, Default)]
 pub struct Textures {
     pub bullets: [Handle<Image>; 4],
