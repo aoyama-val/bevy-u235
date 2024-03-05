@@ -67,7 +67,7 @@ fn main() {
                 collision_bullet_bullet_system,
                 collision_player_bullet_system,
                 score_system,
-                hit_sound_system,
+                hit_event,
                 crash_event,
                 bevy::window::close_on_esc,
             )
@@ -128,8 +128,6 @@ fn setup_ingame(
     textures: ResMut<Textures>,
     query: Query<(&DespawnOnRestart, Entity)>,
 ) {
-    println!("setup_ingame");
-
     game.started_count += 1;
     game.reset();
 
@@ -214,15 +212,12 @@ fn setup_ingame(
     ));
 
     // Score, HiScore
-    println!("spawn score");
     let textures: &Res<'_, Textures> = &textures.into();
     spawn_number(game.hi_score, 18, 0, &mut commands, textures, "HiScore");
     spawn_number(game.score, 32, 0, &mut commands, textures, "Score");
 }
 
-fn cleanup_ingame() {
-    println!("cleanup_ingame");
-}
+fn cleanup_ingame() {}
 
 fn spawn_number(
     num: i32,
@@ -281,18 +276,9 @@ fn score_system(
         let text = format!("{:8}", num);
         let byte = text.as_bytes()[i];
         if 0x30 <= byte && byte <= 0x39 {
-            if number_type.0 == "Score" {
-                println!(
-                    "text: {text}, i: {i}, byte: {byte}, index: {}, visibility: {visibility:?}",
-                    texture_atlas.index
-                );
-            }
             texture_atlas.index = (byte - 0x30) as usize;
             *visibility = Visibility::Visible;
         } else {
-            if number_type.0 == "Score" {
-                println!("text: {text}, i: {i}, byte: {byte}, hide, visibility: {visibility:?}");
-            }
             texture_atlas.index = 0;
             *visibility = Visibility::Hidden;
         }
@@ -425,11 +411,7 @@ fn bullet_system(
     }
 }
 
-fn hit_sound_system(
-    mut commands: Commands,
-    mut hit_events: EventReader<HitEvent>,
-    sound: Res<HitSound>,
-) {
+fn hit_event(mut commands: Commands, mut hit_events: EventReader<HitEvent>, sound: Res<HitSound>) {
     if !hit_events.is_empty() {
         hit_events.clear();
         commands.spawn(AudioBundle {
