@@ -1,6 +1,6 @@
 # U235 - A simple shooter game made with Bevy Engine
 
-https://youtu.be/LkHnEXi3718
+[![Youtube Video](https://img.youtube.com/vi/LkHnEXi3718/0.jpg)](https://www.youtube.com/watch?v=LkHnEXi3718)
 
 ## Requirement
 
