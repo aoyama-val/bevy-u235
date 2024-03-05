@@ -1,0 +1,21 @@
+use bevy::prelude::*;
+
+#[derive(Resource)]
+pub struct HitSound(pub Handle<AudioSource>);
+
+#[derive(Resource)]
+pub struct CrashSound(pub Handle<AudioSource>);
+
+#[derive(Resource, Default)]
+pub struct Game {
+    pub score: i32,
+    pub hi_score: i32,
+}
+
+#[derive(Resource, Default)]
+pub struct Textures {
+    pub bullets: [Handle<Image>; 4],
+    pub numbers: Handle<Image>,
+    pub numbers_layout: Handle<TextureAtlasLayout>,
+    pub dust: Handle<Image>,
+}

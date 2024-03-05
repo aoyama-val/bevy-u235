@@ -1,10 +1,17 @@
 mod assets;
 mod components;
+mod events;
+mod resources;
+mod states;
 
+use assets::*;
 use bevy::prelude::*;
 use bevy_framepace::Limiter;
 use components::*;
+use events::*;
 use rand::Rng;
+use resources::*;
+use states::*;
 
 const TITLE: &str = "u235";
 const SCREEEN_WIDTH: f32 = 640.0;
@@ -15,41 +22,6 @@ const X_MIN: i32 = 2;
 const X_MAX: i32 = 640 / 16 - 3;
 const Y_MIN: i32 = 2;
 const Y_MAX: i32 = 400 / 16 - 3;
-
-#[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Hash, States)]
-enum GameState {
-    #[default]
-    InGame,
-    GameOver,
-}
-
-#[derive(Resource)]
-struct HitSound(Handle<AudioSource>);
-
-#[derive(Resource)]
-struct CrashSound(Handle<AudioSource>);
-
-#[derive(Resource, Default)]
-struct Game {
-    score: i32,
-    hi_score: i32,
-}
-
-#[derive(Resource, Default)]
-struct Textures {
-    bullets: [Handle<Image>; 4],
-    numbers: Handle<Image>,
-    numbers_layout: Handle<TextureAtlasLayout>,
-    dust: Handle<Image>,
-}
-
-#[derive(Event, Default)]
-struct HitEvent;
-
-#[derive(Event, Default)]
-struct CrashEvent {
-    pos: Position,
-}
 
 fn main() {
     App::new()
@@ -116,19 +88,16 @@ fn create_top_left_sprite() -> Sprite {
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut textures: ResMut<Textures>) {
-    textures.bullets[components::Direction::Up.to_i32() as usize] =
-        asset_server.load(assets::IMAGE_UP);
-    textures.bullets[components::Direction::Left.to_i32() as usize] =
-        asset_server.load(assets::IMAGE_LEFT);
-    textures.bullets[components::Direction::Down.to_i32() as usize] =
-        asset_server.load(assets::IMAGE_DOWN);
+    textures.bullets[components::Direction::Up.to_i32() as usize] = asset_server.load(IMAGE_UP);
+    textures.bullets[components::Direction::Left.to_i32() as usize] = asset_server.load(IMAGE_LEFT);
+    textures.bullets[components::Direction::Down.to_i32() as usize] = asset_server.load(IMAGE_DOWN);
     textures.bullets[components::Direction::Right.to_i32() as usize] =
-        asset_server.load(assets::IMAGE_RIGHT);
-    textures.dust = asset_server.load(assets::IMAGE_DUST);
+        asset_server.load(IMAGE_RIGHT);
+    textures.dust = asset_server.load(IMAGE_DUST);
 
     // Sound
-    commands.insert_resource(HitSound(asset_server.load(assets::SOUND_HIT)));
-    commands.insert_resource(CrashSound(asset_server.load(assets::SOUND_CRASH)));
+    commands.insert_resource(HitSound(asset_server.load(SOUND_HIT)));
+    commands.insert_resource(CrashSound(asset_server.load(SOUND_CRASH)));
 }
 
 fn setup_ingame(
@@ -170,7 +139,7 @@ fn setup_ingame(
         DespawnOnRestart,
         player_position.clone(),
         SpriteBundle {
-            texture: asset_server.load(assets::IMAGE_PLAYER),
+            texture: asset_server.load(IMAGE_PLAYER),
             transform: position_to_transform(player_position.clone()),
             sprite: sprite.clone(),
             ..default()
@@ -182,7 +151,7 @@ fn setup_ingame(
         commands.spawn((
             DespawnOnRestart,
             SpriteBundle {
-                texture: asset_server.load(assets::IMAGE_WALL),
+                texture: asset_server.load(IMAGE_WALL),
                 transform: position_to_transform(Position::new(x, y)),
                 sprite: sprite.clone(),
                 ..default()
@@ -202,7 +171,7 @@ fn setup_ingame(
         commands.spawn((
             DespawnOnRestart,
             SpriteBundle {
-                texture: asset_server.load(assets::IMAGE_BACK),
+                texture: asset_server.load(IMAGE_BACK),
                 transform: position_to_transform(Position::new(i, Y_MAX + 1)),
                 sprite: sprite.clone(),
                 ..default()
@@ -214,18 +183,18 @@ fn setup_ingame(
     commands.spawn((
         DespawnOnRestart,
         SpriteBundle {
-            texture: asset_server.load(assets::IMAGE_TITLE),
+            texture: asset_server.load(IMAGE_TITLE),
             transform: position_to_transform(Position::new(1, 0)),
             sprite: sprite.clone(),
             ..default()
         },
     ));
 
-    let texture: Handle<Image> = asset_server.load(assets::IMAGE_NUMBERS);
+    let texture: Handle<Image> = asset_server.load(IMAGE_NUMBERS);
     let layout = TextureAtlasLayout::from_grid(
-        assets::IMAGE_NUMBERS_TILE_SIZE,
-        assets::IMAGE_NUMBERS_TILE_COLUMNS,
-        assets::IMAGE_NUMBERS_TILE_ROWS,
+        IMAGE_NUMBERS_TILE_SIZE,
+        IMAGE_NUMBERS_TILE_COLUMNS,
+        IMAGE_NUMBERS_TILE_ROWS,
         None,
         None,
     );
@@ -272,7 +241,7 @@ fn spawn_number(
                 },
             ));
         }
-        numbers_pos.translation.x += assets::IMAGE_NUMBERS_TILE_SIZE.x;
+        numbers_pos.translation.x += IMAGE_NUMBERS_TILE_SIZE.x;
     }
 }
 
@@ -485,7 +454,7 @@ fn spawn_target(
         Target,
         DespawnOnRestart,
         SpriteBundle {
-            texture: asset_server.load(assets::IMAGE_TARGET),
+            texture: asset_server.load(IMAGE_TARGET),
             transform: position_to_transform(position.clone()),
             sprite: create_top_left_sprite(),
             ..default()
