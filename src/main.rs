@@ -458,7 +458,7 @@ fn crash_event(
                 custom_size: Some(Vec2::new(SCREEEN_WIDTH, SCREEN_HEIGHT)),
                 ..default()
             },
-            transform: Transform::from_xyz(0.0, 0.0, 999.0),
+            transform: Transform::from_xyz(0.0, 0.0, 3.0),
             ..default()
         });
     }
