@@ -638,14 +638,12 @@ fn check_for_player_bullet_collisions(
     mut crash_events: EventWriter<CrashEvent>,
 ) {
     for (player_pos, player_entity) in &players_query {
-        for (bullet_pos, bullet_entity0) in &bullets_query {
-            if player_pos.y == bullet_pos.y
-                && (player_pos.x == bullet_pos.x
-                    || player_pos.x + 1 == bullet_pos.x
-                    || player_pos.x + 2 == bullet_pos.x)
+        for (bullet_pos, bullet_entity) in &bullets_query {
+            if bullet_pos.y == player_pos.y
+                && (player_pos.x <= bullet_pos.x && bullet_pos.x <= player_pos.x + 2)
             {
                 commands.entity(player_entity).despawn();
-                commands.entity(bullet_entity0).despawn();
+                commands.entity(bullet_entity).despawn();
                 crash_events.send(CrashEvent(player_pos.clone()));
             }
         }
