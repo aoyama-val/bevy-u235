@@ -483,7 +483,7 @@ fn target_spawn_system(
             return;
         }
     }
-    if !(rand::thread_rng().gen_range(0.0..1.0) < 0.07 && target_count < 80) {
+    if !(rand::thread_rng().gen_bool(0.07) && target_count < 80) {
         return;
     }
     commands.spawn((
