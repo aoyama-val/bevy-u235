@@ -1,5 +1,9 @@
+mod assets;
+mod components;
+
 use bevy::prelude::*;
 use bevy_framepace::Limiter;
+use components::*;
 use rand::Rng;
 
 const TITLE: &str = "u235";
@@ -11,119 +15,6 @@ const X_MIN: i32 = 2;
 const X_MAX: i32 = 640 / 16 - 3;
 const Y_MIN: i32 = 2;
 const Y_MAX: i32 = 400 / 16 - 3;
-
-mod assets {
-    use bevy::prelude::*;
-
-    pub const IMAGE_BACK: &str = "image/back.png";
-    pub const IMAGE_DOWN: &str = "image/down.png";
-    pub const IMAGE_DUST: &str = "image/dust.png";
-    pub const IMAGE_LEFT: &str = "image/left.png";
-    pub const IMAGE_NUMBERS: &str = "image/numbers.png";
-    pub const IMAGE_NUMBERS_TILE_SIZE: Vec2 = Vec2::new(8.0, 16.0);
-    pub const IMAGE_NUMBERS_TILE_COLUMNS: usize = 10;
-    pub const IMAGE_NUMBERS_TILE_ROWS: usize = 1;
-    pub const IMAGE_PLAYER: &str = "image/player.png";
-    pub const IMAGE_RIGHT: &str = "image/right.png";
-    pub const IMAGE_TARGET: &str = "image/target.png";
-    pub const IMAGE_TITLE: &str = "image/title.png";
-    pub const IMAGE_UP: &str = "image/up.png";
-    pub const IMAGE_WALL: &str = "image/wall.png";
-    pub const SOUND_CRASH: &str = "sound/crash.wav";
-    pub const SOUND_HIT: &str = "sound/hit.wav";
-}
-
-// このmarkerをつけたComponentはリスタート時にdespawnされる
-// https://www.reddit.com/r/bevy/comments/17er37y/comment/k65wjdn/?utm_source=share&utm_medium=web3x&utm_name=web3xcss&utm_term=1&utm_content=share_button
-#[derive(Component)]
-struct DespawnOnRestart;
-
-#[derive(Debug, Default, Clone, Eq, PartialEq, Component)]
-struct Position {
-    x: i32,
-    y: i32,
-}
-
-impl Position {
-    fn new(x: i32, y: i32) -> Self {
-        Self { x, y }
-    }
-
-    pub fn add(&self, x: i32, y: i32) -> Self {
-        Self {
-            x: self.x + x,
-            y: self.y + y,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq, Component)]
-enum Direction {
-    Up,
-    Left,
-    Down,
-    Right,
-}
-
-impl Direction {
-    pub fn all() -> [Self; 4] {
-        [
-            Direction::Up,
-            Direction::Left,
-            Direction::Down,
-            Direction::Right,
-        ]
-    }
-
-    pub fn from_i32(n: i32) -> Self {
-        match n {
-            0 => Direction::Up,
-            1 => Direction::Left,
-            2 => Direction::Down,
-            3 => Direction::Right,
-            _ => panic!(),
-        }
-    }
-
-    pub fn to_i32(&self) -> i32 {
-        match self {
-            Direction::Up => 0,
-            Direction::Left => 1,
-            Direction::Down => 2,
-            Direction::Right => 3,
-        }
-    }
-
-    pub fn opposite(&self) -> Self {
-        match self {
-            Direction::Up => Direction::Down,
-            Direction::Left => Direction::Right,
-            Direction::Down => Direction::Up,
-            Direction::Right => Direction::Left,
-        }
-    }
-
-    pub fn neighbor(&self, pos: Position) -> Position {
-        match self {
-            Direction::Up => pos.add(0, -1),
-            Direction::Left => pos.add(-1, 0),
-            Direction::Down => pos.add(0, 1),
-            Direction::Right => pos.add(1, 0),
-        }
-    }
-}
-
-#[derive(Component)]
-struct Player;
-
-#[derive(Component)]
-struct Bullet;
-
-#[derive(Component)]
-struct Target;
-
-#[derive(Component)]
-struct NumberType(&'static str, usize);
 
 #[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Hash, States)]
 enum GameState {
@@ -225,10 +116,14 @@ fn create_top_left_sprite() -> Sprite {
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut textures: ResMut<Textures>) {
-    textures.bullets[Direction::Up.to_i32() as usize] = asset_server.load(assets::IMAGE_UP);
-    textures.bullets[Direction::Left.to_i32() as usize] = asset_server.load(assets::IMAGE_LEFT);
-    textures.bullets[Direction::Down.to_i32() as usize] = asset_server.load(assets::IMAGE_DOWN);
-    textures.bullets[Direction::Right.to_i32() as usize] = asset_server.load(assets::IMAGE_RIGHT);
+    textures.bullets[components::Direction::Up.to_i32() as usize] =
+        asset_server.load(assets::IMAGE_UP);
+    textures.bullets[components::Direction::Left.to_i32() as usize] =
+        asset_server.load(assets::IMAGE_LEFT);
+    textures.bullets[components::Direction::Down.to_i32() as usize] =
+        asset_server.load(assets::IMAGE_DOWN);
+    textures.bullets[components::Direction::Right.to_i32() as usize] =
+        asset_server.load(assets::IMAGE_RIGHT);
     textures.dust = asset_server.load(assets::IMAGE_DUST);
 
     // Sound
@@ -343,7 +238,7 @@ fn setup_ingame(
     spawn_number(game.score, 32, 0, &mut commands, textures, "Score");
 }
 
-fn cleanup_ingame(mut commands: Commands) {
+fn cleanup_ingame() {
     println!("cleanup_ingame");
 }
 
@@ -417,7 +312,7 @@ fn update_player(
                 &mut commands,
                 &textures,
                 &bullet_position,
-                Direction::Up,
+                components::Direction::Up,
                 false,
             );
         }
@@ -437,7 +332,7 @@ fn spawn_bullet(
     commands: &mut Commands,
     textures: &Res<Textures>,
     bullet_position: &Position,
-    direction: Direction,
+    direction: components::Direction,
     is_dust: bool,
 ) {
     commands.spawn((
@@ -463,7 +358,7 @@ fn update_bullets(
         (
             &mut Position,
             &mut Transform,
-            &mut Direction,
+            &mut components::Direction,
             &mut Handle<Image>,
             Entity,
         ),
@@ -474,21 +369,21 @@ fn update_bullets(
 ) {
     for (mut pos, mut transform, mut dir, mut handle, entity) in &mut query {
         match *dir {
-            Direction::Left => {
+            components::Direction::Left => {
                 pos.x -= 1;
                 if pos.x <= X_MIN {
                     *dir = dir.opposite();
                     *handle = textures.bullets[dir.to_i32() as usize].clone();
                 }
             }
-            Direction::Right => {
+            components::Direction::Right => {
                 pos.x += 1;
                 if pos.x >= X_MAX {
                     *dir = dir.opposite();
                     *handle = textures.bullets[dir.to_i32() as usize].clone();
                 }
             }
-            Direction::Up => {
+            components::Direction::Up => {
                 pos.y -= 1;
                 if pos.y <= Y_MIN {
                     *dir = dir.opposite();
@@ -496,7 +391,7 @@ fn update_bullets(
                     *handle = textures.bullets[dir.to_i32() as usize].clone();
                 }
             }
-            Direction::Down => {
+            components::Direction::Down => {
                 pos.y += 1;
                 if pos.y > Y_MAX {
                     commands.entity(entity).despawn();
@@ -526,7 +421,6 @@ fn crash_event(
     mut commands: Commands,
     mut crash_events: EventReader<CrashEvent>,
     sound: Res<CrashSound>,
-    game: Res<Game>,
     textures: Res<Textures>,
 ) {
     if !crash_events.is_empty() {
@@ -631,13 +525,13 @@ fn check_for_bullet_target_collisions(
                 if game.score > game.hi_score {
                     game.hi_score = game.score;
                 }
-                for dir in Direction::all() {
+                for dir in components::Direction::all() {
                     spawn_bullet(
                         &mut commands,
                         &textures,
                         &dir.neighbor(bullet_pos.clone()),
                         dir.clone(),
-                        dir == Direction::Down,
+                        dir == components::Direction::Down,
                     );
                 }
             }
@@ -647,15 +541,22 @@ fn check_for_bullet_target_collisions(
 
 fn check_for_bullet_bullet_collisions(
     mut commands: Commands,
-    bullets_query0: Query<(&Position, &Direction, Entity), (With<Bullet>, Without<Target>)>,
-    bullets_query1: Query<(&Position, &Direction, Entity), (With<Bullet>, Without<Target>)>,
+    bullets_query0: Query<
+        (&Position, &components::Direction, Entity),
+        (With<Bullet>, Without<Target>),
+    >,
+    bullets_query1: Query<
+        (&Position, &components::Direction, Entity),
+        (With<Bullet>, Without<Target>),
+    >,
 ) {
     for (bullet_pos0, dir0, bullet_entity0) in &bullets_query0 {
         for (bullet_pos1, dir1, bullet_entity1) in &bullets_query1 {
             if bullet_pos0 == bullet_pos1
                 && bullet_entity0 != bullet_entity1
-                && ((*dir0 == Direction::Left && *dir1 == Direction::Right)
-                    || (*dir0 == Direction::Right && *dir1 == Direction::Left))
+                && ((*dir0 == components::Direction::Left && *dir1 == components::Direction::Right)
+                    || (*dir0 == components::Direction::Right
+                        && *dir1 == components::Direction::Left))
             {
                 commands.entity(bullet_entity0).despawn();
                 commands.entity(bullet_entity1).despawn();
