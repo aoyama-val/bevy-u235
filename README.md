@@ -1,8 +1,11 @@
-# U235 game made with Bevy Engine
+# U235 - A simple shooter game made with Bevy Engine
+
+https://youtu.be/LkHnEXi3718
 
 ## Requirement
 
 - Rust
+- Bevy 0.13
 
 ## Build
 
