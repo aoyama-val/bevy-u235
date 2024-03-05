@@ -99,6 +99,13 @@ struct Target;
 #[derive(Component)]
 struct NumberType(&'static str, usize);
 
+#[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Hash, States)]
+enum GameState {
+    #[default]
+    InGame,
+    GameOver,
+}
+
 #[derive(Resource)]
 struct HitSound(Handle<AudioSource>);
 
@@ -139,6 +146,7 @@ fn main() {
             }),
             bevy_framepace::FramepacePlugin,
         ))
+        .insert_state(GameState::InGame)
         .init_resource::<Game>()
         .insert_resource(bevy_framepace::FramepaceSettings {
             limiter: Limiter::from_framerate(FPS),
@@ -147,7 +155,8 @@ fn main() {
         .insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
         .add_event::<HitEvent>()
         .add_event::<CrashEvent>()
-        .add_systems(Startup, setup)
+        .add_systems(OnEnter(GameState::InGame), setup_ingame)
+        .add_systems(OnExit(GameState::InGame), cleanup_ingame)
         .add_systems(
             Update,
             (
@@ -162,7 +171,12 @@ fn main() {
                 play_hit_sound,
                 crash_event,
             )
-                .chain(),
+                .chain()
+                .run_if(in_state(GameState::InGame)),
+        )
+        .add_systems(
+            Update,
+            (restart,).chain().run_if(in_state(GameState::GameOver)),
         )
         .run();
 }
@@ -174,12 +188,14 @@ fn create_default_sprite() -> Sprite {
     }
 }
 
-fn setup(
+fn setup_ingame(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut game: ResMut<Game>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
+    println!("setup_ingame");
+
     // Camera
     // ワールド座標は画面左上を(0, 400)、右下を(640, 0)とする
     commands.spawn(Camera2dBundle {
@@ -269,6 +285,10 @@ fn setup(
     commands.insert_resource(CrashSound(asset_server.load("sound/crash.wav")));
 }
 
+fn cleanup_ingame(mut commands: Commands, query: Query<Entity>) {
+    println!("cleanup_ingame");
+}
+
 fn spawn_number(
     num: i32,
     cx: i32,
@@ -336,6 +356,15 @@ fn update_player(
             let bullet_position = Position::new(position.x + 1, position.y - 1);
             spawn_bullet(&mut commands, &game, &bullet_position, Direction::Up, false);
         }
+    }
+}
+
+fn restart(
+    mut next_state: ResMut<NextState<GameState>>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+) {
+    if keyboard_input.just_pressed(KeyCode::Space) {
+        next_state.set(GameState::InGame);
     }
 }
 
@@ -427,6 +456,7 @@ fn play_hit_sound(
 }
 
 fn crash_event(
+    mut next_state: ResMut<NextState<GameState>>,
     mut commands: Commands,
     mut crash_events: EventReader<CrashEvent>,
     sound: Res<CrashSound>,
@@ -460,6 +490,7 @@ fn crash_event(
             break;
         }
         crash_events.clear();
+        next_state.set(GameState::GameOver);
     }
 }
 
