@@ -433,34 +433,33 @@ fn crash_event(
     game: Res<Game>,
 ) {
     if !crash_events.is_empty() {
-        let mut position = Position::new(0, 0);
-        // for event in crash_events.read() {
-        //     position = event.0.clone();
-        // }
-        crash_events.clear();
-        println!("crash!");
-        commands.spawn(AudioBundle {
-            source: sound.0.clone(),
-            settings: PlaybackSettings::DESPAWN,
-        });
-        // for i in 0..3 {
-        //     commands.spawn(SpriteBundle {
-        //         texture: game.dust_texture.clone(),
-        //         sprite: create_default_sprite(),
-        //         transform: position_to_transform(Position::new(position.x + i, position.y)),
-        //         ..default()
-        //     });
-        // }
-        commands.spawn(SpriteBundle {
-            sprite: Sprite {
-                color: Color::rgba(1.0, 0.0, 0.0, 0.5),
-                anchor: bevy::sprite::Anchor::BottomLeft,
-                custom_size: Some(Vec2::new(SCREEEN_WIDTH, SCREEN_HEIGHT)),
+        for event in crash_events.read() {
+            let position = event.0.clone();
+            commands.spawn(AudioBundle {
+                source: sound.0.clone(),
+                settings: PlaybackSettings::DESPAWN,
+            });
+            for i in 0..3 {
+                commands.spawn(SpriteBundle {
+                    texture: game.dust_texture.clone(),
+                    sprite: create_default_sprite(),
+                    transform: position_to_transform(Position::new(position.x + i, position.y)),
+                    ..default()
+                });
+            }
+            commands.spawn(SpriteBundle {
+                sprite: Sprite {
+                    color: Color::rgba(1.0, 0.0, 0.0, 0.5),
+                    anchor: bevy::sprite::Anchor::BottomLeft,
+                    custom_size: Some(Vec2::new(SCREEEN_WIDTH, SCREEN_HEIGHT)),
+                    ..default()
+                },
+                transform: Transform::from_xyz(0.0, 0.0, 3.0),
                 ..default()
-            },
-            transform: Transform::from_xyz(0.0, 0.0, 3.0),
-            ..default()
-        });
+            });
+            break;
+        }
+        crash_events.clear();
     }
 }
 
