@@ -228,8 +228,7 @@ fn spawn_number(
     let mut numbers_pos = position_to_transform(Position::new(cx, cy));
     for i in 0..8 {
         let byte = text.as_bytes()[i];
-        if 0x30 <= byte && byte <= 0x39 {
-            let index = (byte - 0x30) as usize;
+        let mut spawn_num = |atlas_index, visibility| {
             commands.spawn((
                 NumberType(label, i),
                 DespawnOnRestart,
@@ -237,16 +236,48 @@ fn spawn_number(
                     texture: textures.numbers.clone(),
                     atlas: TextureAtlas {
                         layout: textures.numbers_layout.clone(),
-                        index: index,
+                        index: atlas_index,
                     },
                     transform: numbers_pos,
-                    visibility: Visibility::Visible,
+                    visibility: visibility,
                     sprite: create_top_left_sprite(),
                     ..default()
                 },
             ));
+        };
+        if 0x30 <= byte && byte <= 0x39 {
+            spawn_num((byte - 0x30) as usize, Visibility::Visible);
+        } else {
+            spawn_num(0, Visibility::Hidden);
         }
         numbers_pos.translation.x += IMAGE_NUMBERS_TILE_SIZE.x;
+    }
+}
+
+fn score_system(
+    mut query: Query<(&NumberType, &mut TextureAtlas, &mut Visibility)>,
+    game: ResMut<Game>,
+) {
+    for (number_type, mut texture_atlas, mut visibility) in &mut query {
+        let index = number_type.1;
+        let num;
+        if number_type.0 == "Score" {
+            num = game.score;
+        } else if number_type.0 == "HiScore" {
+            num = game.hi_score;
+        } else {
+            panic!();
+        }
+
+        let text = format!("{:8}", num);
+        let byte = text.as_bytes()[index];
+        if 0x30 <= byte && byte <= 0x39 {
+            texture_atlas.index = (byte - 0x30) as usize;
+            *visibility = Visibility::Visible;
+        } else {
+            texture_atlas.index = 0;
+            *visibility = Visibility::Visible;
+        }
     }
 }
 
@@ -466,19 +497,6 @@ fn spawn_target_system(
         },
         position,
     ));
-}
-
-fn score_system(
-    mut commands: Commands,
-    mut query: Query<Entity, With<NumberType>>,
-    textures: Res<Textures>,
-    game: ResMut<Game>,
-) {
-    // for entity in &mut query {
-    //     commands.entity(entity).despawn();
-    // }
-    // spawn_number(game.hi_score, 18, 0, &mut commands, &textures, "HiScore");
-    // spawn_number(game.score, 32, 0, &mut commands, &textures, "Score");
 }
 
 fn collision_bullet_target_system(
