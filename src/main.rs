@@ -44,7 +44,7 @@ fn main() {
             }),
             bevy_framepace::FramepacePlugin,
         ))
-        .insert_state(GameState::InGame)
+        .insert_state(GameState::Playing)
         .init_resource::<Game>()
         .init_resource::<Textures>()
         .insert_resource(bevy_framepace::FramepaceSettings {
@@ -54,9 +54,9 @@ fn main() {
         .insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
         .add_event::<HitEvent>()
         .add_event::<CrashEvent>()
-        .add_systems(Startup, setup)
-        .add_systems(OnEnter(GameState::InGame), setup_ingame)
-        .add_systems(OnExit(GameState::InGame), cleanup_ingame)
+        .add_systems(Startup, startup)
+        .add_systems(OnEnter(GameState::Playing), playing_enter)
+        .add_systems(OnExit(GameState::Playing), playing_exit)
         .add_systems(
             Update,
             (
@@ -72,7 +72,7 @@ fn main() {
                 bevy::window::close_on_esc,
             )
                 .chain()
-                .run_if(in_state(GameState::InGame)),
+                .run_if(in_state(GameState::Playing)),
         )
         .add_systems(
             Update,
@@ -90,7 +90,7 @@ fn create_top_left_sprite() -> Sprite {
     }
 }
 
-fn setup(
+fn startup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
     mut textures: ResMut<Textures>,
@@ -122,7 +122,7 @@ fn setup(
     commands.insert_resource(CrashSound(asset_server.load(SOUND_CRASH)));
 }
 
-fn setup_ingame(
+fn playing_enter(
     mut commands: Commands,
     mut game: ResMut<Game>,
     textures: ResMut<Textures>,
@@ -217,7 +217,7 @@ fn setup_ingame(
     spawn_number(game.score, 32, 0, &mut commands, textures, "Score");
 }
 
-fn cleanup_ingame() {}
+fn playing_exit() {}
 
 fn spawn_number(
     num: i32,
@@ -333,7 +333,7 @@ fn restart_system(
     keyboard_input: Res<ButtonInput<KeyCode>>,
 ) {
     if keyboard_input.just_pressed(KeyCode::Space) {
-        next_state.set(GameState::InGame);
+        next_state.set(GameState::Playing);
     }
 }
 
