@@ -131,7 +131,9 @@ struct Game {
 struct HitEvent;
 
 #[derive(Event, Default)]
-struct CrashEvent(Position);
+struct CrashEvent {
+    pos: Position,
+}
 
 fn main() {
     App::new()
@@ -500,7 +502,7 @@ fn crash_event(
 ) {
     if !crash_events.is_empty() {
         for event in crash_events.read() {
-            let position = event.0.clone();
+            let position = event.pos.clone();
             commands.spawn(AudioBundle {
                 source: sound.0.clone(),
                 settings: PlaybackSettings::DESPAWN,
@@ -644,7 +646,9 @@ fn check_for_player_bullet_collisions(
             {
                 commands.entity(player_entity).despawn();
                 commands.entity(bullet_entity).despawn();
-                crash_events.send(CrashEvent(player_pos.clone()));
+                crash_events.send(CrashEvent {
+                    pos: player_pos.clone(),
+                });
             }
         }
     }
