@@ -18,10 +18,11 @@ const SCREEEN_WIDTH: f32 = 640.0;
 const SCREEN_HEIGHT: f32 = 400.0;
 const CELL_SIZE_PX: f32 = 16.0;
 const FPS: f64 = 30.0;
+// 壁で囲まれた領域のmin/max
 const X_MIN: i32 = 2;
-const X_MAX: i32 = 640 / 16 - 3;
+const X_MAX: i32 = (SCREEEN_WIDTH / CELL_SIZE_PX) as i32 - 3;
 const Y_MIN: i32 = 2;
-const Y_MAX: i32 = 400 / 16 - 3;
+const Y_MAX: i32 = (SCREEN_HEIGHT / CELL_SIZE_PX) as i32 - 3;
 
 fn main() {
     App::new()
