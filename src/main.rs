@@ -12,6 +12,27 @@ const X_MAX: i32 = 640 / 16 - 3;
 const Y_MIN: i32 = 2;
 const Y_MAX: i32 = 400 / 16 - 3;
 
+mod assets {
+    use bevy::prelude::*;
+
+    pub const IMAGE_BACK: &str = "image/back.png";
+    pub const IMAGE_DOWN: &str = "image/down.png";
+    pub const IMAGE_DUST: &str = "image/dust.png";
+    pub const IMAGE_LEFT: &str = "image/left.png";
+    pub const IMAGE_NUMBERS: &str = "image/numbers.png";
+    pub const IMAGE_NUMBERS_TILE_SIZE: Vec2 = Vec2::new(8.0, 16.0);
+    pub const IMAGE_NUMBERS_TILE_COLUMNS: usize = 10;
+    pub const IMAGE_NUMBERS_TILE_ROWS: usize = 1;
+    pub const IMAGE_PLAYER: &str = "image/player.png";
+    pub const IMAGE_RIGHT: &str = "image/right.png";
+    pub const IMAGE_TARGET: &str = "image/target.png";
+    pub const IMAGE_TITLE: &str = "image/title.png";
+    pub const IMAGE_UP: &str = "image/up.png";
+    pub const IMAGE_WALL: &str = "image/wall.png";
+    pub const SOUND_CRASH: &str = "sound/crash.wav";
+    pub const SOUND_HIT: &str = "sound/hit.wav";
+}
+
 // このmarkerをつけたComponentはリスタート時にdespawnされる
 // https://www.reddit.com/r/bevy/comments/17er37y/comment/k65wjdn/?utm_source=share&utm_medium=web3x&utm_name=web3xcss&utm_term=1&utm_content=share_button
 #[derive(Component)]
@@ -199,15 +220,16 @@ fn create_top_left_sprite() -> Sprite {
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut game: ResMut<Game>) {
-    game.bullet_handles[Direction::Up.to_i32() as usize] = asset_server.load("image/up.png");
-    game.bullet_handles[Direction::Left.to_i32() as usize] = asset_server.load("image/left.png");
-    game.bullet_handles[Direction::Down.to_i32() as usize] = asset_server.load("image/down.png");
-    game.bullet_handles[Direction::Right.to_i32() as usize] = asset_server.load("image/right.png");
-    game.dust_texture = asset_server.load("image/dust.png");
+    game.bullet_handles[Direction::Up.to_i32() as usize] = asset_server.load(assets::IMAGE_UP);
+    game.bullet_handles[Direction::Left.to_i32() as usize] = asset_server.load(assets::IMAGE_LEFT);
+    game.bullet_handles[Direction::Down.to_i32() as usize] = asset_server.load(assets::IMAGE_DOWN);
+    game.bullet_handles[Direction::Right.to_i32() as usize] =
+        asset_server.load(assets::IMAGE_RIGHT);
+    game.dust_texture = asset_server.load(assets::IMAGE_DUST);
 
     // Sound
-    commands.insert_resource(HitSound(asset_server.load("sound/hit.wav")));
-    commands.insert_resource(CrashSound(asset_server.load("sound/crash.wav")));
+    commands.insert_resource(HitSound(asset_server.load(assets::SOUND_HIT)));
+    commands.insert_resource(CrashSound(asset_server.load(assets::SOUND_CRASH)));
 }
 
 fn setup_ingame(
@@ -246,7 +268,7 @@ fn setup_ingame(
         DespawnOnRestart,
         player_position.clone(),
         SpriteBundle {
-            texture: asset_server.load("image/player.png"),
+            texture: asset_server.load(assets::IMAGE_PLAYER),
             transform: position_to_transform(player_position.clone()),
             sprite: sprite.clone(),
             ..default()
@@ -258,7 +280,7 @@ fn setup_ingame(
         commands.spawn((
             DespawnOnRestart,
             SpriteBundle {
-                texture: asset_server.load("image/wall.png"),
+                texture: asset_server.load(assets::IMAGE_WALL),
                 transform: position_to_transform(Position::new(1, y)),
                 sprite: sprite.clone(),
                 ..default()
@@ -267,7 +289,7 @@ fn setup_ingame(
         commands.spawn((
             DespawnOnRestart,
             SpriteBundle {
-                texture: asset_server.load("image/wall.png"),
+                texture: asset_server.load(assets::IMAGE_WALL),
                 transform: position_to_transform(Position::new(X_MAX + 1, y)),
                 sprite: sprite.clone(),
                 ..default()
@@ -278,7 +300,7 @@ fn setup_ingame(
         commands.spawn((
             DespawnOnRestart,
             SpriteBundle {
-                texture: asset_server.load("image/wall.png"),
+                texture: asset_server.load(assets::IMAGE_WALL),
                 transform: position_to_transform(Position::new(x, 1)),
                 sprite: sprite.clone(),
                 ..default()
@@ -291,7 +313,7 @@ fn setup_ingame(
         commands.spawn((
             DespawnOnRestart,
             SpriteBundle {
-                texture: asset_server.load("image/back.png"),
+                texture: asset_server.load(assets::IMAGE_BACK),
                 transform: position_to_transform(Position::new(i, Y_MAX + 1)),
                 sprite: sprite.clone(),
                 ..default()
@@ -303,15 +325,21 @@ fn setup_ingame(
     commands.spawn((
         DespawnOnRestart,
         SpriteBundle {
-            texture: asset_server.load("image/title.png"),
+            texture: asset_server.load(assets::IMAGE_TITLE),
             transform: position_to_transform(Position::new(1, 0)),
             sprite: sprite.clone(),
             ..default()
         },
     ));
 
-    let texture: Handle<Image> = asset_server.load("image/numbers.png");
-    let layout = TextureAtlasLayout::from_grid(Vec2::new(8.0, 16.0), 10, 1, None, None);
+    let texture: Handle<Image> = asset_server.load(assets::IMAGE_NUMBERS);
+    let layout = TextureAtlasLayout::from_grid(
+        assets::IMAGE_NUMBERS_TILE_SIZE,
+        assets::IMAGE_NUMBERS_TILE_COLUMNS,
+        assets::IMAGE_NUMBERS_TILE_ROWS,
+        None,
+        None,
+    );
     let texture_atlas_layout = texture_atlas_layouts.add(layout);
     game.texture_atlas_layout = texture_atlas_layout;
     game.number_texture = texture;
@@ -355,7 +383,7 @@ fn spawn_number(
                 },
             ));
         }
-        numbers_pos.translation.x += 8.0;
+        numbers_pos.translation.x += assets::IMAGE_NUMBERS_TILE_SIZE.x;
     }
 }
 
@@ -562,7 +590,7 @@ fn spawn_target(
         Target,
         DespawnOnRestart,
         SpriteBundle {
-            texture: asset_server.load("image/target.png"),
+            texture: asset_server.load(assets::IMAGE_TARGET),
             transform: position_to_transform(position.clone()),
             sprite: create_top_left_sprite(),
             ..default()
