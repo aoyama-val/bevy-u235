@@ -21,9 +21,13 @@ impl Game {
 
 #[derive(Resource, Default)]
 pub struct Textures {
+    pub back: Handle<Image>,
     pub bullets: [Handle<Image>; 4],
     pub dust: Handle<Image>,
-    pub target: Handle<Image>,
     pub numbers: Handle<Image>,
     pub numbers_layout: Handle<TextureAtlasLayout>,
+    pub player: Handle<Image>,
+    pub target: Handle<Image>,
+    pub title: Handle<Image>,
+    pub wall: Handle<Image>,
 }

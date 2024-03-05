@@ -97,14 +97,13 @@ fn setup(
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
     // Texture
+    textures.back = asset_server.load(IMAGE_BACK);
     textures.bullets[components::Direction::Up.to_i32() as usize] = asset_server.load(IMAGE_UP);
     textures.bullets[components::Direction::Left.to_i32() as usize] = asset_server.load(IMAGE_LEFT);
     textures.bullets[components::Direction::Down.to_i32() as usize] = asset_server.load(IMAGE_DOWN);
     textures.bullets[components::Direction::Right.to_i32() as usize] =
         asset_server.load(IMAGE_RIGHT);
     textures.dust = asset_server.load(IMAGE_DUST);
-    textures.target = asset_server.load(IMAGE_TARGET);
-
     textures.numbers = asset_server.load(IMAGE_NUMBERS);
     textures.numbers_layout = texture_atlas_layouts.add(TextureAtlasLayout::from_grid(
         IMAGE_NUMBERS_TILE_SIZE,
@@ -113,6 +112,10 @@ fn setup(
         None,
         None,
     ));
+    textures.player = asset_server.load(IMAGE_PLAYER);
+    textures.target = asset_server.load(IMAGE_TARGET);
+    textures.title = asset_server.load(IMAGE_TITLE);
+    textures.wall = asset_server.load(IMAGE_WALL);
 
     // Sound
     commands.insert_resource(HitSound(asset_server.load(SOUND_HIT)));
@@ -121,9 +124,8 @@ fn setup(
 
 fn setup_ingame(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
     mut game: ResMut<Game>,
-    mut textures: ResMut<Textures>,
+    textures: ResMut<Textures>,
     query: Query<(&DespawnOnRestart, Entity)>,
 ) {
     println!("setup_ingame");
@@ -144,7 +146,7 @@ fn setup_ingame(
             transform: Transform::from_xyz(
                 SCREEEN_WIDTH / 2.0,
                 SCREEN_HEIGHT / 2.0,
-                projection.far,
+                projection.far - 1.0,
             ),
             projection: projection,
             ..default()
@@ -160,7 +162,7 @@ fn setup_ingame(
         DespawnOnRestart,
         player_position.clone(),
         SpriteBundle {
-            texture: asset_server.load(IMAGE_PLAYER),
+            texture: textures.player.clone(),
             transform: position_to_transform(player_position.clone()),
             sprite: sprite.clone(),
             ..default()
@@ -172,7 +174,7 @@ fn setup_ingame(
         commands.spawn((
             DespawnOnRestart,
             SpriteBundle {
-                texture: asset_server.load(IMAGE_WALL),
+                texture: textures.wall.clone(),
                 transform: position_to_transform(Position::new(x, y)),
                 sprite: sprite.clone(),
                 ..default()
@@ -192,7 +194,7 @@ fn setup_ingame(
         commands.spawn((
             DespawnOnRestart,
             SpriteBundle {
-                texture: asset_server.load(IMAGE_BACK),
+                texture: textures.back.clone(),
                 transform: position_to_transform(Position::new(i, Y_MAX + 1)),
                 sprite: sprite.clone(),
                 ..default()
@@ -204,7 +206,7 @@ fn setup_ingame(
     commands.spawn((
         DespawnOnRestart,
         SpriteBundle {
-            texture: asset_server.load(IMAGE_TITLE),
+            texture: textures.title.clone(),
             transform: position_to_transform(Position::new(1, 0)),
             sprite: sprite.clone(),
             ..default()
