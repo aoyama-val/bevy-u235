@@ -634,11 +634,11 @@ fn check_for_bullet_bullet_collisions(
 fn check_for_player_bullet_collisions(
     mut commands: Commands,
     players_query: Query<(&Position, Entity), With<Player>>,
-    bullets_query0: Query<(&Position, Entity), (With<Bullet>, Without<Target>)>,
+    bullets_query: Query<(&Position, Entity), (With<Bullet>, Without<Target>)>,
     mut crash_events: EventWriter<CrashEvent>,
 ) {
     for (player_pos, player_entity) in &players_query {
-        for (bullet_pos, bullet_entity0) in &bullets_query0 {
+        for (bullet_pos, bullet_entity0) in &bullets_query {
             if player_pos.y == bullet_pos.y
                 && (player_pos.x == bullet_pos.x
                     || player_pos.x + 1 == bullet_pos.x
