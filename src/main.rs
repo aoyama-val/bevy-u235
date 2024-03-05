@@ -4,6 +4,8 @@ mod events;
 mod resources;
 mod states;
 
+use std::collections::HashSet;
+
 use assets::*;
 use bevy::prelude::*;
 use bevy_framepace::Limiter;
@@ -472,11 +474,11 @@ fn score_system(
     textures: Res<Textures>,
     game: ResMut<Game>,
 ) {
-    for entity in &mut query {
-        commands.entity(entity).despawn();
-    }
-    spawn_number(game.hi_score, 18, 0, &mut commands, &textures, "HiScore");
-    spawn_number(game.score, 32, 0, &mut commands, &textures, "Score");
+    // for entity in &mut query {
+    //     commands.entity(entity).despawn();
+    // }
+    // spawn_number(game.hi_score, 18, 0, &mut commands, &textures, "HiScore");
+    // spawn_number(game.score, 32, 0, &mut commands, &textures, "Score");
 }
 
 fn collision_bullet_target_system(
@@ -487,11 +489,21 @@ fn collision_bullet_target_system(
     mut game: ResMut<Game>,
     textures: Res<Textures>,
 ) {
+    let mut despawned_entities: HashSet<Entity> = HashSet::new();
+
     for (bullet_pos, bullet_entity) in &bullets_query {
+        if despawned_entities.contains(&bullet_entity) {
+            continue;
+        }
         for (target_pos, target_entity) in &targets_query {
+            if despawned_entities.contains(&target_entity) {
+                continue;
+            }
             if bullet_pos == target_pos {
                 commands.entity(bullet_entity).despawn();
                 commands.entity(target_entity).despawn();
+                despawned_entities.insert(bullet_entity);
+                despawned_entities.insert(target_entity);
                 hit_events.send_default();
                 game.score += 1000;
                 if game.score > game.hi_score {
@@ -522,8 +534,16 @@ fn collision_bullet_bullet_system(
         (With<Bullet>, Without<Target>),
     >,
 ) {
+    let mut despawned_entities: HashSet<Entity> = HashSet::new();
+
     for (bullet_pos0, dir0, bullet_entity0) in &bullets_query0 {
+        if despawned_entities.contains(&bullet_entity0) {
+            continue;
+        }
         for (bullet_pos1, dir1, bullet_entity1) in &bullets_query1 {
+            if despawned_entities.contains(&bullet_entity1) {
+                continue;
+            }
             if bullet_pos0 == bullet_pos1
                 && bullet_entity0 != bullet_entity1
                 && ((*dir0 == components::Direction::Left && *dir1 == components::Direction::Right)
@@ -532,6 +552,8 @@ fn collision_bullet_bullet_system(
             {
                 commands.entity(bullet_entity0).despawn();
                 commands.entity(bullet_entity1).despawn();
+                despawned_entities.insert(bullet_entity0);
+                despawned_entities.insert(bullet_entity1);
             }
         }
     }
@@ -543,13 +565,23 @@ fn collision_player_bullet_system(
     bullets_query: Query<(&Position, Entity), (With<Bullet>, Without<Target>)>,
     mut crash_events: EventWriter<CrashEvent>,
 ) {
+    let mut despawned_entities: HashSet<Entity> = HashSet::new();
+
     for (player_pos, player_entity) in &players_query {
+        if despawned_entities.contains(&player_entity) {
+            return;
+        }
         for (bullet_pos, bullet_entity) in &bullets_query {
+            if despawned_entities.contains(&bullet_entity) {
+                return;
+            }
             if bullet_pos.y == player_pos.y
                 && (player_pos.x <= bullet_pos.x && bullet_pos.x <= player_pos.x + 2)
             {
                 commands.entity(player_entity).despawn();
                 commands.entity(bullet_entity).despawn();
+                despawned_entities.insert(player_entity);
+                despawned_entities.insert(bullet_entity);
                 crash_events.send(CrashEvent {
                     pos: player_pos.clone(),
                 });
