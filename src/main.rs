@@ -587,11 +587,11 @@ fn collision_player_bullet_system(
 
     for (player_pos, player_entity) in &players_query {
         if despawned_entities.contains(&player_entity) {
-            return;
+            continue;
         }
         for (bullet_pos, bullet_entity) in &bullets_query {
             if despawned_entities.contains(&bullet_entity) {
-                return;
+                continue;
             }
             if bullet_pos.y == player_pos.y
                 && (player_pos.x <= bullet_pos.x && bullet_pos.x <= player_pos.x + 2)
