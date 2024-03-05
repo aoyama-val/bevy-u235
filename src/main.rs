@@ -128,7 +128,6 @@ fn playing_enter(
     textures: ResMut<Textures>,
     query: Query<(&DespawnOnRestart, Entity)>,
 ) {
-    game.started_count += 1;
     game.reset();
 
     for (_, entity) in &query {

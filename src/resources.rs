@@ -10,7 +10,6 @@ pub struct CrashSound(pub Handle<AudioSource>);
 pub struct Game {
     pub score: i32,
     pub hi_score: i32,
-    pub started_count: i32,
 }
 
 impl Game {
