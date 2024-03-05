@@ -58,16 +58,16 @@ fn main() {
         .add_systems(
             Update,
             (
-                update_player,
-                update_bullets,
-                spawn_target,
-                check_for_bullet_target_collisions,
-                check_for_bullet_bullet_collisions,
-                check_for_player_bullet_collisions,
-                update_score,
-                bevy::window::close_on_esc,
-                play_hit_sound,
+                player_system,
+                bullets_system,
+                spawn_target_system,
+                collision_bullet_target_system,
+                collision_bullet_bullet_system,
+                collision_player_bullet_system,
+                score_system,
+                play_hit_sound_system,
                 crash_event,
+                bevy::window::close_on_esc,
             )
                 .chain()
                 .run_if(in_state(GameState::InGame)),
@@ -118,15 +118,17 @@ fn setup_ingame(
     }
 
     // Camera
-    // ワールド座標は画面左上を(0, 400)、右下を(640, 0)とする
+    // 画面左上がワールド座標(0, 400)、右下が(640, 0)となるようにカメラを移動
+    let projection = OrthographicProjection::default();
     commands.spawn((
         DespawnOnRestart,
         Camera2dBundle {
-            transform: Transform::from_xyz(SCREEEN_WIDTH / 2.0, SCREEN_HEIGHT / 2.0, 999.0),
-            projection: OrthographicProjection {
-                scaling_mode: bevy::render::camera::ScalingMode::WindowSize(1.0),
-                ..default()
-            },
+            transform: Transform::from_xyz(
+                SCREEEN_WIDTH / 2.0,
+                SCREEN_HEIGHT / 2.0,
+                projection.far,
+            ),
+            projection: projection,
             ..default()
         },
     ));
@@ -255,7 +257,7 @@ fn position_to_transform(position: Position) -> Transform {
     )
 }
 
-fn update_player(
+fn player_system(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut query: Query<(&mut Transform, &mut Position), With<Player>>,
     mut commands: Commands,
@@ -323,7 +325,7 @@ fn spawn_bullet(
     ));
 }
 
-fn update_bullets(
+fn bullets_system(
     mut query: Query<
         (
             &mut Position,
@@ -372,7 +374,7 @@ fn update_bullets(
     }
 }
 
-fn play_hit_sound(
+fn play_hit_sound_system(
     mut commands: Commands,
     mut hit_events: EventReader<HitEvent>,
     sound: Res<HitSound>,
@@ -431,7 +433,7 @@ fn crash_event(
     }
 }
 
-fn spawn_target(
+fn spawn_target_system(
     mut commands: Commands,
     query: Query<(&Target, &Position)>,
     asset_server: Res<AssetServer>,
@@ -464,7 +466,7 @@ fn spawn_target(
     ));
 }
 
-fn update_score(
+fn score_system(
     mut commands: Commands,
     mut query: Query<Entity, With<NumberType>>,
     textures: Res<Textures>,
@@ -477,7 +479,7 @@ fn update_score(
     spawn_number(game.score, 32, 0, &mut commands, &textures, "Score");
 }
 
-fn check_for_bullet_target_collisions(
+fn collision_bullet_target_system(
     mut commands: Commands,
     bullets_query: Query<(&Position, Entity), (With<Bullet>, Without<Target>)>,
     targets_query: Query<(&Position, Entity), (With<Target>, Without<Bullet>)>,
@@ -509,7 +511,7 @@ fn check_for_bullet_target_collisions(
     }
 }
 
-fn check_for_bullet_bullet_collisions(
+fn collision_bullet_bullet_system(
     mut commands: Commands,
     bullets_query0: Query<
         (&Position, &components::Direction, Entity),
@@ -535,7 +537,7 @@ fn check_for_bullet_bullet_collisions(
     }
 }
 
-fn check_for_player_bullet_collisions(
+fn collision_player_bullet_system(
     mut commands: Commands,
     players_query: Query<(&Position, Entity), With<Player>>,
     bullets_query: Query<(&Position, Entity), (With<Bullet>, Without<Target>)>,
