@@ -102,6 +102,9 @@ struct NumberType(&'static str, usize);
 #[derive(Resource)]
 struct HitSound(Handle<AudioSource>);
 
+#[derive(Resource)]
+struct CrashSound(Handle<AudioSource>);
+
 #[derive(Resource, Default)]
 struct Game {
     score: i32,
@@ -114,6 +117,9 @@ struct Game {
 
 #[derive(Event, Default)]
 struct HitEvent;
+
+#[derive(Event, Default)]
+struct CrashEvent(Position);
 
 fn main() {
     App::new()
@@ -140,6 +146,7 @@ fn main() {
         })
         .insert_resource(ClearColor(Color::rgb(0.0, 0.0, 0.0)))
         .add_event::<HitEvent>()
+        .add_event::<CrashEvent>()
         .add_systems(Startup, setup)
         .add_systems(
             Update,
@@ -149,9 +156,11 @@ fn main() {
                 spawn_target,
                 check_for_bullet_target_collisions,
                 check_for_bullet_bullet_collisions,
+                check_for_player_bullet_collisions,
                 update_score,
                 bevy::window::close_on_esc,
                 play_hit_sound,
+                crash_event,
             )
                 .chain(),
         )
@@ -256,8 +265,8 @@ fn setup(
     game.dust_texture = asset_server.load("image/dust.png");
 
     // Sound
-    let hit_sound = asset_server.load("sound/hit.wav");
-    commands.insert_resource(HitSound(hit_sound));
+    commands.insert_resource(HitSound(asset_server.load("sound/hit.wav")));
+    commands.insert_resource(CrashSound(asset_server.load("sound/crash.wav")));
 }
 
 fn spawn_number(
@@ -304,30 +313,29 @@ fn position_to_transform(position: Position) -> Transform {
 
 fn update_player(
     keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut query: Query<&mut Transform, With<Player>>,
-    mut position_query: Query<&mut Position, With<Player>>,
+    mut query: Query<(&mut Transform, &mut Position), With<Player>>,
     mut commands: Commands,
     game: ResMut<Game>,
 ) {
-    let mut player_transform = query.single_mut();
-    let mut player_position = position_query.single_mut();
-
-    if keyboard_input.pressed(KeyCode::ArrowLeft) {
-        if player_position.x > X_MIN {
-            player_position.x = player_position.x - 1;
+    for (mut transform, mut position) in &mut query {
+        if keyboard_input.pressed(KeyCode::ArrowLeft) {
+            if position.x > X_MIN {
+                position.x = position.x - 1;
+            }
         }
-    }
 
-    if keyboard_input.pressed(KeyCode::ArrowRight) {
-        if player_position.x < X_MAX - 2 {
-            player_position.x = player_position.x + 1;
+        if keyboard_input.pressed(KeyCode::ArrowRight) {
+            if position.x < X_MAX - 2 {
+                position.x = position.x + 1;
+            }
         }
-    }
-    player_transform.translation = position_to_transform(player_position.clone()).translation;
+        transform.translation = position_to_transform(position.clone()).translation;
 
-    if keyboard_input.pressed(KeyCode::ShiftLeft) || keyboard_input.pressed(KeyCode::ShiftRight) {
-        let bullet_position = Position::new(player_position.x + 1, player_position.y - 1);
-        spawn_bullet(&mut commands, &game, &bullet_position, Direction::Up, false);
+        if keyboard_input.pressed(KeyCode::ShiftLeft) || keyboard_input.pressed(KeyCode::ShiftRight)
+        {
+            let bullet_position = Position::new(position.x + 1, position.y - 1);
+            spawn_bullet(&mut commands, &game, &bullet_position, Direction::Up, false);
+        }
     }
 }
 
@@ -414,6 +422,44 @@ fn play_hit_sound(
         commands.spawn(AudioBundle {
             source: sound.0.clone(),
             settings: PlaybackSettings::DESPAWN,
+        });
+    }
+}
+
+fn crash_event(
+    mut commands: Commands,
+    mut crash_events: EventReader<CrashEvent>,
+    sound: Res<CrashSound>,
+    game: Res<Game>,
+) {
+    if !crash_events.is_empty() {
+        let mut position = Position::new(0, 0);
+        // for event in crash_events.read() {
+        //     position = event.0.clone();
+        // }
+        crash_events.clear();
+        println!("crash!");
+        commands.spawn(AudioBundle {
+            source: sound.0.clone(),
+            settings: PlaybackSettings::DESPAWN,
+        });
+        // for i in 0..3 {
+        //     commands.spawn(SpriteBundle {
+        //         texture: game.dust_texture.clone(),
+        //         sprite: create_default_sprite(),
+        //         transform: position_to_transform(Position::new(position.x + i, position.y)),
+        //         ..default()
+        //     });
+        // }
+        commands.spawn(SpriteBundle {
+            sprite: Sprite {
+                color: Color::rgba(1.0, 0.0, 0.0, 0.5),
+                anchor: bevy::sprite::Anchor::BottomLeft,
+                custom_size: Some(Vec2::new(SCREEEN_WIDTH, SCREEN_HEIGHT)),
+                ..default()
+            },
+            transform: Transform::from_xyz(0.0, 0.0, 999.0),
+            ..default()
         });
     }
 }
@@ -507,6 +553,27 @@ fn check_for_bullet_bullet_collisions(
             {
                 commands.entity(bullet_entity0).despawn();
                 commands.entity(bullet_entity1).despawn();
+            }
+        }
+    }
+}
+
+fn check_for_player_bullet_collisions(
+    mut commands: Commands,
+    players_query: Query<(&Position, Entity), With<Player>>,
+    bullets_query0: Query<(&Position, Entity), (With<Bullet>, Without<Target>)>,
+    mut crash_events: EventWriter<CrashEvent>,
+) {
+    for (player_pos, player_entity) in &players_query {
+        for (bullet_pos, bullet_entity0) in &bullets_query0 {
+            if player_pos.y == bullet_pos.y
+                && (player_pos.x == bullet_pos.x
+                    || player_pos.x + 1 == bullet_pos.x
+                    || player_pos.x + 2 == bullet_pos.x)
+            {
+                commands.entity(player_entity).despawn();
+                commands.entity(bullet_entity0).despawn();
+                crash_events.send(CrashEvent(player_pos.clone()));
             }
         }
     }
