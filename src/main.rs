@@ -276,36 +276,23 @@ fn setup_ingame(
     ));
 
     // Walls
+    let mut spawn_wall = |x, y| {
+        commands.spawn((
+            DespawnOnRestart,
+            SpriteBundle {
+                texture: asset_server.load(assets::IMAGE_WALL),
+                transform: position_to_transform(Position::new(x, y)),
+                sprite: sprite.clone(),
+                ..default()
+            },
+        ));
+    };
     for y in 1..=Y_MAX {
-        commands.spawn((
-            DespawnOnRestart,
-            SpriteBundle {
-                texture: asset_server.load(assets::IMAGE_WALL),
-                transform: position_to_transform(Position::new(1, y)),
-                sprite: sprite.clone(),
-                ..default()
-            },
-        ));
-        commands.spawn((
-            DespawnOnRestart,
-            SpriteBundle {
-                texture: asset_server.load(assets::IMAGE_WALL),
-                transform: position_to_transform(Position::new(X_MAX + 1, y)),
-                sprite: sprite.clone(),
-                ..default()
-            },
-        ));
+        spawn_wall(1, y);
+        spawn_wall(X_MAX + 1, y);
     }
     for x in 1..(X_MAX + 1) {
-        commands.spawn((
-            DespawnOnRestart,
-            SpriteBundle {
-                texture: asset_server.load(assets::IMAGE_WALL),
-                transform: position_to_transform(Position::new(x, 1)),
-                sprite: sprite.clone(),
-                ..default()
-            },
-        ));
+        spawn_wall(x, 1);
     }
 
     // Back
