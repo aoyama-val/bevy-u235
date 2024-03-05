@@ -61,13 +61,13 @@ fn main() {
             Update,
             (
                 player_system,
-                bullets_system,
-                spawn_target_system,
+                bullet_system,
+                target_spawn_system,
                 collision_bullet_target_system,
                 collision_bullet_bullet_system,
                 collision_player_bullet_system,
                 score_system,
-                play_hit_sound_system,
+                hit_sound_system,
                 crash_event,
                 bevy::window::close_on_esc,
             )
@@ -358,7 +358,7 @@ fn spawn_bullet(
     ));
 }
 
-fn bullets_system(
+fn bullet_system(
     mut query: Query<
         (
             &mut Position,
@@ -407,7 +407,7 @@ fn bullets_system(
     }
 }
 
-fn play_hit_sound_system(
+fn hit_sound_system(
     mut commands: Commands,
     mut hit_events: EventReader<HitEvent>,
     sound: Res<HitSound>,
@@ -466,7 +466,7 @@ fn crash_event(
     }
 }
 
-fn spawn_target_system(
+fn target_spawn_system(
     mut commands: Commands,
     query: Query<(&Target, &Position)>,
     asset_server: Res<AssetServer>,
