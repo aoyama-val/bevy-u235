@@ -10,6 +10,7 @@ pub struct CrashSound(pub Handle<AudioSource>);
 pub struct Game {
     pub score: i32,
     pub hi_score: i32,
+    pub started_count: i32,
 }
 
 impl Game {
@@ -21,7 +22,8 @@ impl Game {
 #[derive(Resource, Default)]
 pub struct Textures {
     pub bullets: [Handle<Image>; 4],
+    pub dust: Handle<Image>,
+    pub target: Handle<Image>,
     pub numbers: Handle<Image>,
     pub numbers_layout: Handle<TextureAtlasLayout>,
-    pub dust: Handle<Image>,
 }

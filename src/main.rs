@@ -90,13 +90,29 @@ fn create_top_left_sprite() -> Sprite {
     }
 }
 
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>, mut textures: ResMut<Textures>) {
+fn setup(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut textures: ResMut<Textures>,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+) {
+    // Texture
     textures.bullets[components::Direction::Up.to_i32() as usize] = asset_server.load(IMAGE_UP);
     textures.bullets[components::Direction::Left.to_i32() as usize] = asset_server.load(IMAGE_LEFT);
     textures.bullets[components::Direction::Down.to_i32() as usize] = asset_server.load(IMAGE_DOWN);
     textures.bullets[components::Direction::Right.to_i32() as usize] =
         asset_server.load(IMAGE_RIGHT);
     textures.dust = asset_server.load(IMAGE_DUST);
+    textures.target = asset_server.load(IMAGE_TARGET);
+
+    textures.numbers = asset_server.load(IMAGE_NUMBERS);
+    textures.numbers_layout = texture_atlas_layouts.add(TextureAtlasLayout::from_grid(
+        IMAGE_NUMBERS_TILE_SIZE,
+        IMAGE_NUMBERS_TILE_COLUMNS,
+        IMAGE_NUMBERS_TILE_ROWS,
+        None,
+        None,
+    ));
 
     // Sound
     commands.insert_resource(HitSound(asset_server.load(SOUND_HIT)));
@@ -108,11 +124,11 @@ fn setup_ingame(
     asset_server: Res<AssetServer>,
     mut game: ResMut<Game>,
     mut textures: ResMut<Textures>,
-    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
     query: Query<(&DespawnOnRestart, Entity)>,
 ) {
     println!("setup_ingame");
 
+    game.started_count += 1;
     game.reset();
 
     for (_, entity) in &query {
@@ -195,18 +211,8 @@ fn setup_ingame(
         },
     ));
 
-    let texture: Handle<Image> = asset_server.load(IMAGE_NUMBERS);
-    let layout = TextureAtlasLayout::from_grid(
-        IMAGE_NUMBERS_TILE_SIZE,
-        IMAGE_NUMBERS_TILE_COLUMNS,
-        IMAGE_NUMBERS_TILE_ROWS,
-        None,
-        None,
-    );
-    textures.numbers_layout = texture_atlas_layouts.add(layout);
-    textures.numbers = texture;
-
     // Score, HiScore
+    println!("spawn score");
     let textures: &Res<'_, Textures> = &textures.into();
     spawn_number(game.hi_score, 18, 0, &mut commands, textures, "HiScore");
     spawn_number(game.score, 32, 0, &mut commands, textures, "Score");
@@ -259,7 +265,7 @@ fn score_system(
     game: ResMut<Game>,
 ) {
     for (number_type, mut texture_atlas, mut visibility) in &mut query {
-        let index = number_type.1;
+        let i = number_type.1;
         let num;
         if number_type.0 == "Score" {
             num = game.score;
@@ -270,13 +276,22 @@ fn score_system(
         }
 
         let text = format!("{:8}", num);
-        let byte = text.as_bytes()[index];
+        let byte = text.as_bytes()[i];
         if 0x30 <= byte && byte <= 0x39 {
+            if number_type.0 == "Score" {
+                println!(
+                    "text: {text}, i: {i}, byte: {byte}, index: {}, visibility: {visibility:?}",
+                    texture_atlas.index
+                );
+            }
             texture_atlas.index = (byte - 0x30) as usize;
             *visibility = Visibility::Visible;
         } else {
+            if number_type.0 == "Score" {
+                println!("text: {text}, i: {i}, byte: {byte}, hide, visibility: {visibility:?}");
+            }
             texture_atlas.index = 0;
-            *visibility = Visibility::Visible;
+            *visibility = Visibility::Hidden;
         }
     }
 }
@@ -469,7 +484,7 @@ fn crash_event(
 fn target_spawn_system(
     mut commands: Commands,
     query: Query<(&Target, &Position)>,
-    asset_server: Res<AssetServer>,
+    textures: Res<Textures>,
 ) {
     let position = Position::new(
         rand::thread_rng().gen_range(X_MIN + 1..=X_MAX - 1),
@@ -490,7 +505,7 @@ fn target_spawn_system(
         Target,
         DespawnOnRestart,
         SpriteBundle {
-            texture: asset_server.load(IMAGE_TARGET),
+            texture: textures.target.clone(),
             transform: position_to_transform(position.clone()),
             sprite: create_top_left_sprite(),
             ..default()
