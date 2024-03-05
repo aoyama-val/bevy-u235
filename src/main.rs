@@ -12,6 +12,11 @@ const X_MAX: i32 = 640 / 16 - 3;
 const Y_MIN: i32 = 2;
 const Y_MAX: i32 = 400 / 16 - 3;
 
+// このmarkerをつけたComponentはリスタート時にdespawnされる
+// https://www.reddit.com/r/bevy/comments/17er37y/comment/k65wjdn/?utm_source=share&utm_medium=web3x&utm_name=web3xcss&utm_term=1&utm_content=share_button
+#[derive(Component)]
+struct DespawnOnRestart;
+
 #[derive(Debug, Default, Clone, Eq, PartialEq, Component)]
 struct Position {
     x: i32,
@@ -193,19 +198,27 @@ fn setup_ingame(
     asset_server: Res<AssetServer>,
     mut game: ResMut<Game>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    query: Query<(&DespawnOnRestart, Entity)>,
 ) {
     println!("setup_ingame");
 
+    for (_, entity) in &query {
+        commands.entity(entity).despawn();
+    }
+
     // Camera
     // ワールド座標は画面左上を(0, 400)、右下を(640, 0)とする
-    commands.spawn(Camera2dBundle {
-        transform: Transform::from_xyz(SCREEEN_WIDTH / 2.0, SCREEN_HEIGHT / 2.0, 999.0),
-        projection: OrthographicProjection {
-            scaling_mode: bevy::render::camera::ScalingMode::WindowSize(1.0),
+    commands.spawn((
+        DespawnOnRestart,
+        Camera2dBundle {
+            transform: Transform::from_xyz(SCREEEN_WIDTH / 2.0, SCREEN_HEIGHT / 2.0, 999.0),
+            projection: OrthographicProjection {
+                scaling_mode: bevy::render::camera::ScalingMode::WindowSize(1.0),
+                ..default()
+            },
             ..default()
         },
-        ..default()
-    });
+    ));
 
     let sprite: Sprite = create_default_sprite();
 
@@ -213,6 +226,7 @@ fn setup_ingame(
     let player_position = Position::new(18, Y_MAX);
     commands.spawn((
         Player,
+        DespawnOnRestart,
         player_position.clone(),
         SpriteBundle {
             texture: asset_server.load("image/player.png"),
@@ -224,45 +238,60 @@ fn setup_ingame(
 
     // Walls
     for y in 1..=Y_MAX {
-        commands.spawn(SpriteBundle {
-            texture: asset_server.load("image/wall.png"),
-            transform: position_to_transform(Position::new(1, y)),
-            sprite: sprite.clone(),
-            ..default()
-        });
-        commands.spawn(SpriteBundle {
-            texture: asset_server.load("image/wall.png"),
-            transform: position_to_transform(Position::new(X_MAX + 1, y)),
-            sprite: sprite.clone(),
-            ..default()
-        });
+        commands.spawn((
+            DespawnOnRestart,
+            SpriteBundle {
+                texture: asset_server.load("image/wall.png"),
+                transform: position_to_transform(Position::new(1, y)),
+                sprite: sprite.clone(),
+                ..default()
+            },
+        ));
+        commands.spawn((
+            DespawnOnRestart,
+            SpriteBundle {
+                texture: asset_server.load("image/wall.png"),
+                transform: position_to_transform(Position::new(X_MAX + 1, y)),
+                sprite: sprite.clone(),
+                ..default()
+            },
+        ));
     }
     for x in 1..(X_MAX + 1) {
-        commands.spawn(SpriteBundle {
-            texture: asset_server.load("image/wall.png"),
-            transform: position_to_transform(Position::new(x, 1)),
-            sprite: sprite.clone(),
-            ..default()
-        });
+        commands.spawn((
+            DespawnOnRestart,
+            SpriteBundle {
+                texture: asset_server.load("image/wall.png"),
+                transform: position_to_transform(Position::new(x, 1)),
+                sprite: sprite.clone(),
+                ..default()
+            },
+        ));
     }
 
     // Back
     for i in (X_MIN - 2)..=(X_MAX + 2) {
-        commands.spawn(SpriteBundle {
-            texture: asset_server.load("image/back.png"),
-            transform: position_to_transform(Position::new(i, Y_MAX + 1)),
-            sprite: sprite.clone(),
-            ..default()
-        });
+        commands.spawn((
+            DespawnOnRestart,
+            SpriteBundle {
+                texture: asset_server.load("image/back.png"),
+                transform: position_to_transform(Position::new(i, Y_MAX + 1)),
+                sprite: sprite.clone(),
+                ..default()
+            },
+        ));
     }
 
     // Title
-    commands.spawn(SpriteBundle {
-        texture: asset_server.load("image/title.png"),
-        transform: position_to_transform(Position::new(1, 0)),
-        sprite: sprite.clone(),
-        ..default()
-    });
+    commands.spawn((
+        DespawnOnRestart,
+        SpriteBundle {
+            texture: asset_server.load("image/title.png"),
+            transform: position_to_transform(Position::new(1, 0)),
+            sprite: sprite.clone(),
+            ..default()
+        },
+    ));
 
     let texture: Handle<Image> = asset_server.load("image/numbers.png");
     let layout = TextureAtlasLayout::from_grid(Vec2::new(8.0, 16.0), 10, 1, None, None);
@@ -285,7 +314,7 @@ fn setup_ingame(
     commands.insert_resource(CrashSound(asset_server.load("sound/crash.wav")));
 }
 
-fn cleanup_ingame(mut commands: Commands, query: Query<Entity>) {
+fn cleanup_ingame(mut commands: Commands) {
     println!("cleanup_ingame");
 }
 
@@ -305,6 +334,7 @@ fn spawn_number(
             let index = (byte - 0x30) as usize;
             commands.spawn((
                 NumberType(label, i),
+                DespawnOnRestart,
                 SpriteSheetBundle {
                     texture: game.number_texture.clone(),
                     atlas: TextureAtlas {
@@ -377,6 +407,7 @@ fn spawn_bullet(
 ) {
     commands.spawn((
         Bullet,
+        DespawnOnRestart,
         bullet_position.clone(),
         direction.clone(),
         SpriteBundle {
@@ -470,23 +501,29 @@ fn crash_event(
                 settings: PlaybackSettings::DESPAWN,
             });
             for i in 0..3 {
-                commands.spawn(SpriteBundle {
-                    texture: game.dust_texture.clone(),
-                    sprite: create_default_sprite(),
-                    transform: position_to_transform(Position::new(position.x + i, position.y)),
-                    ..default()
-                });
+                commands.spawn((
+                    DespawnOnRestart,
+                    SpriteBundle {
+                        texture: game.dust_texture.clone(),
+                        sprite: create_default_sprite(),
+                        transform: position_to_transform(Position::new(position.x + i, position.y)),
+                        ..default()
+                    },
+                ));
             }
-            commands.spawn(SpriteBundle {
-                sprite: Sprite {
-                    color: Color::rgba(1.0, 0.0, 0.0, 0.5),
-                    anchor: bevy::sprite::Anchor::BottomLeft,
-                    custom_size: Some(Vec2::new(SCREEEN_WIDTH, SCREEN_HEIGHT)),
+            commands.spawn((
+                DespawnOnRestart,
+                SpriteBundle {
+                    sprite: Sprite {
+                        color: Color::rgba(1.0, 0.0, 0.0, 0.5),
+                        anchor: bevy::sprite::Anchor::BottomLeft,
+                        custom_size: Some(Vec2::new(SCREEEN_WIDTH, SCREEN_HEIGHT)),
+                        ..default()
+                    },
+                    transform: Transform::from_xyz(0.0, 0.0, 3.0),
                     ..default()
                 },
-                transform: Transform::from_xyz(0.0, 0.0, 3.0),
-                ..default()
-            });
+            ));
             break;
         }
         crash_events.clear();
@@ -516,6 +553,7 @@ fn spawn_target(
     }
     commands.spawn((
         Target,
+        DespawnOnRestart,
         SpriteBundle {
             texture: asset_server.load("image/target.png"),
             transform: position_to_transform(position.clone()),
